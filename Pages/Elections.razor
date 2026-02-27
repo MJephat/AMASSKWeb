@@ -1,0 +1,142 @@
+﻿@page "/elections"
+
+<PageTitle>Elections</PageTitle>
+
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h2>Elections</h2>
+            <small>Manage SSK 2026 General Elections</small>
+        </div>
+
+        <button class="btn-primary">
+            + Create Election
+        </button>
+    </div>
+
+    <!-- Election Card -->
+    <div class="election-card">
+        <div>
+            <h4>SSK 2026 General Elections</h4>
+            <small>Wednesday, 15 April 2026</small>
+        </div>
+
+        <span class="badge-progress">In Progress</span>
+    </div>
+
+    <!-- Results Board -->
+    <div class="results-card">
+        <h5>🏆 Results Board</h5>
+
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Position</th>
+                    <th>Candidate</th>
+                    <th>Votes</th>
+                    <th>Percentage</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var position in Positions)
+                {
+                    foreach (var candidate in position.Candidates)
+                    {
+                        var leadingVotes = position.Candidates.Max(c => c.Votes);
+                        var percentage = (candidate.Votes * 100.0) /
+                        position.Candidates.Sum(c => c.Votes);
+
+                        <tr>
+                            <td>@position.Name</td>
+                            <td>@candidate.Name</td>
+                            <td>@candidate.Votes</td>
+                            <td>@percentage.ToString("0.0") %</td>
+                            <td>
+                                @if (candidate.Votes == leadingVotes)
+                                {
+                                    <span class="badge-loading">Loading</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+@code {
+    public class Candidate
+    {
+        public string Name { get; set; }
+        public int Votes { get; set; }
+    }
+
+    public class Position
+    {
+        public string Name { get; set; }
+        public List<Candidate> Candidates { get; set; }
+    }
+
+    List<Position> Positions = new()
+    {
+        new Position
+        {
+            Name = "President",
+            Candidates = new()
+            {
+                new Candidate { Name = "Dr. James Mwangi", Votes = 142 },
+                new Candidate { Name = "Dr. Amina Osman", Votes = 128 }
+            }
+        },
+        new Position
+        {
+            Name = "Vice President",
+            Candidates = new()
+            {
+                new Candidate { Name = "Dr. Peter Kamau", Votes = 95 },
+                new Candidate { Name = "Dr. Faith Wanjiku", Votes = 88 }
+            }
+        },
+        new Position
+        {
+            Name = "Secretary",
+            Candidates = new()
+            {
+                new Candidate { Name = "Dr. Hassan Ali", Votes = 110 },
+                new Candidate { Name = "Dr. Lucy Akinyi", Votes = 102 }
+            }
+        },
+        new Position
+        {
+            Name = "Deputy Secretary",
+            Candidates = new()
+            {
+                new Candidate { Name = "Dr. Michael Ochieng", Votes = 76 },
+                new Candidate { Name = "Dr. Sarah Njeri", Votes = 71 }
+            }
+        },
+        new Position
+        {
+            Name = "Treasurer",
+            Candidates = new()
+            {
+                new Candidate { Name = "Dr. David Kiplagat", Votes = 89 },
+                new Candidate { Name = "Dr. Grace Mutoni", Votes = 84 }
+            }
+        },
+        new Position
+        {
+            Name = "Deputy Treasurer",
+            Candidates = new()
+            {
+                new Candidate { Name = "Dr. Ahmed Farah", Votes = 62 },
+                new Candidate { Name = "Dr. Esther Wambui", Votes = 58 }
+            }
+        }
+    };
+}

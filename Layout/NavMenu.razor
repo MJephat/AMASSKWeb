@@ -1,0 +1,126 @@
+﻿<div class="top-row navbar navbar-dark shadow-sm px-3"
+     style="background-color:#6F4E37; height:64px;">
+
+    <div class="container-fluid">
+
+        <a class="navbar-brand d-flex align-items-center m-0" href="">
+
+            <!-- Logo Badge -->
+            <div class="bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                 style="height:42px; width:42px;">
+                <img src="ssklogo.jpeg"
+                     alt="SSK Logo"
+                     style="height:26px; width:auto;" />
+            </div>
+
+            <!-- Brand Text -->
+            <div class="ms-3 d-flex flex-column">
+                <span class="fw-bold text-uppercase"
+                      style="font-size:15px; letter-spacing:1px;">
+                    SSK
+                </span>
+                <span style="font-size:12px; opacity:0.8;">
+                    Admin Portal
+                </span>
+            </div>
+        </a>
+
+        <button title="Navigation menu"
+                class="navbar-toggler border-0"
+                @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+     <div class="nav-scrollable" style="background-color:#CD7F32">
+        <nav class="flex-column">
+
+            <!-- Dashboard -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="home" Match="NavLinkMatch.All">
+                    <span class="fa-solid fa-gauge-high me-2"></span> Dashboard
+                </NavLink>
+            </div>
+
+            <!-- Members -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="members">
+                    <span class="fa-solid fa-users me-2"></span> Members
+                </NavLink>
+            </div>
+
+            <!-- Surgeons -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="doctors">
+                    <span class="fa-solid fa-user-doctor me-2"></span> Surgeons
+                </NavLink>
+            </div>
+
+            <!-- Events -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="events">
+                    <span class="fa-solid fa-calendar-days me-2"></span> Events
+                </NavLink>
+            </div>
+
+            <!-- Courses -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="courses">
+                    <span class="fa-solid fa-graduation-cap me-2"></span> Courses
+                </NavLink>
+            </div>
+
+            <!-- Elections -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="elections">
+                    <span class="fa-solid fa-check-to-slot me-2"></span> Elections
+                </NavLink>
+            </div>
+
+            <!-- Chapters -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="chapters">
+                    <span class="fa-solid fa-code-branch me-2"></span> Chapters
+                </NavLink>
+            </div>
+
+            <!-- Resources -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="resources">
+                    <span class="fa-solid fa-folder-open me-2"></span> Resources
+                </NavLink>
+            </div>
+
+            <!-- Committees -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="committees">
+                    <span class="fa-solid fa-people-group me-2"></span> Committees
+                </NavLink>
+            </div>
+
+            <!-- Settings -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="settings">
+                    <span class="fa-solid fa-gear me-2"></span> Settings
+                </NavLink>
+            </div>
+
+        </nav>
+     </div>
+</div>
+
+
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

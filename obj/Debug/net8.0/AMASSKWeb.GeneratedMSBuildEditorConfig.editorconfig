@@ -1,0 +1,93 @@
+is_global = true
+build_property.EnableAotAnalyzer = 
+build_property.EnableSingleFileAnalyzer = 
+build_property.EnableTrimAnalyzer = false
+build_property.IncludeAllContentForSelfExtract = 
+build_property.TargetFramework = net8.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = false
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = browser
+build_property.RootNamespace = AMASSKWeb
+build_property.RootNamespace = AMASSKWeb
+build_property.ProjectDir = D:\work\AMASSKWeb\AMASSKWeb\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = false
+build_property.RazorLangVersion = 8.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = D:\work\AMASSKWeb\AMASSKWeb
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 8.0
+build_property.EnableCodeStyleSeverity = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Auth/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQXV0aFxMb2dpbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Auth/Register.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQXV0aFxSZWdpc3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Chapters.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2hhcHRlcnMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Committees.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29tbWl0dGVlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Courses.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ291cnNlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Doctors.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRG9jdG9ycy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Elections.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRWxlY3Rpb25zLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Events.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXZlbnRzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Home.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSG9tZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Members.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTWVtYmVycy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Resources.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUmVzb3VyY2VzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Settings.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU2V0dGluZ3MucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Pages/Weather.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcV2VhdGhlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/work/AMASSKWeb/AMASSKWeb/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0XE1haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-nq1proc2po
+
+[D:/work/AMASSKWeb/AMASSKWeb/Layout/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0XE5hdk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-czyvl0eifw

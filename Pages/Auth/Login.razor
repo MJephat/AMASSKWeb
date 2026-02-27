@@ -1,0 +1,140 @@
+﻿@page "/"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Json
+
+<div class="d-flex justify-content-center align-items-center" style="min-height:80vh;">
+    <EditForm Model="LoginModel" OnValidSubmit="LoginAdmin">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="card shadow p-4" style="max-width:420px;">
+
+            <!-- LOGO -->
+            <img src="ssklogo.jpeg"
+                 alt="SSK Logo"
+                 class="img-fluid mb-3"
+                 style="max-height:90px; object-fit:contain;" />
+
+            <h4 class="text-center mb-4">
+                SSK Admin Login
+            </h4>
+
+            <!-- EMAIL -->
+            <div class="mb-3">
+                <label>Email</label>
+                <InputText class="form-control"
+                           @bind-Value="LoginModel.Email" />
+            </div>
+
+            <!-- PASSWORD -->
+            <div class="mb-3">
+                <label>Password</label>
+                <InputText type="password"
+                           class="form-control"
+                           @bind-Value="LoginModel.Password" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <div class="alert @(IsError ? "alert-danger" : "alert-success")">
+                    @Message
+                </div>
+            }
+
+            <button type="submit"
+                    class="btn w-100 text-white"
+                    style="background-color:#CD7F32;"
+                    disabled="@IsLoading">
+
+                @if (IsLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span>Logging in...</span>
+                }
+                else
+                {
+                    <span>Login</span>
+                }
+            </button>
+
+            <div class="text-center mt-3">
+                <span class="text-muted">Don’t have an account?</span>
+                <a href="/register" class="ms-1 fw-semibold">Register here</a>
+            </div>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+
+    private LoginRequest LoginModel = new();
+    private bool IsLoading;
+    private bool IsError;
+    private string? Message;
+
+    private async Task LoginAdmin()
+    {
+        IsLoading = true;
+        IsError = false;
+        Message = null;
+
+        try
+        {
+            var baseUrl = Configuration["ApiBaseUrl"];
+            var functionKey = Configuration["AzureFunctionKey"];
+
+            var url = $"{baseUrl}/api/SSKAdminLogin";
+
+            var payload = new
+            {
+                email = LoginModel.Email,
+                password = LoginModel.Password
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Content = content;
+
+            request.Headers.Add("x-functions-key", functionKey);
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Message = "Login successful!";
+                await Task.Delay(800);
+                Navigation.NavigateTo("/home");
+            }
+            else
+            {
+                Message = "Invalid credentials";
+                IsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error: {ex.Message}";
+            IsError = true;
+        }
+
+        IsLoading = false;
+    }
+
+    public class LoginRequest
+    {
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "Password is required")]
+        public string Password { get; set; } = "";
+    }
+}
