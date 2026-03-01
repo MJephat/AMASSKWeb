@@ -1034,6 +1034,6 @@ D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\refint\AMASSKWeb.dll
 D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\AMASSKWeb.pdb
 D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\ref\AMASSKWeb.dll
 D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\AMASSKWeb.sourcelink.json
-D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\compressed\bz7xgsmi4f-q361lx2d3q.gz
-D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\compressed\ynmh09hbfu-3rnydsgysx.gz
-D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\compressed\an9utf3g0f-t902ebxhe1.gz
+D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\compressed\bz7xgsmi4f-9q7a6hy4sn.gz
+D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\compressed\ynmh09hbfu-itqzwh86sq.gz
+D:\work\AMASSKWeb\AMASSKWeb\obj\Debug\net8.0\compressed\an9utf3g0f-yixk63azr1.gz

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AMASSKWeb")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9581d5cd9ae0c510eb009e3e09beb2f644b7471b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5648b66c7907fa1c889ee260f51cc3944f572707")]
 [assembly: System.Reflection.AssemblyProductAttribute("AMASSKWeb")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AMASSKWeb")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
