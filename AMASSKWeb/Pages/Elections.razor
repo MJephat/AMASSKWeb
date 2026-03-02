@@ -102,7 +102,8 @@
                                     </button>
 
                                 </div>
-</div>
+
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -426,7 +427,6 @@
                                 <thead>
                                     <tr>
                                         <th>Name</th>
-                                        
                                         <th>Position</th>
                                     </tr>
                                 </thead>
@@ -530,6 +530,7 @@
                             else
                             {
                                 <div class="text-muted text-center mt-5">
+
                                     Select a candidate to view profile
                                 </div>
                             }
@@ -591,6 +592,7 @@
 
     DateTime StartDateLocal
     {
+
         get => Model.ElectionStartDate.ToLocalTime();
         set => Model.ElectionStartDate = value.ToUniversalTime();
     }
@@ -628,6 +630,7 @@
 
             var url = "api/GetElections" + "?code=4iPfBVXzLPtVAmK-PrSzWEe4t1eog_oV8g0AX6M4mXCjAzFuIGuNgw==&onlyActive=true";
 
+
             var response = await Http.GetFromJsonAsync<ApiResponse>(url);
 
             ElectionsItem = response?.Data ?? new();
@@ -650,6 +653,7 @@
     {
         var url = "api/CreateElection";
 
+
         await Http.PostAsJsonAsync(url, Model);
 
         Model = CreateNewModel();
@@ -659,6 +663,7 @@
     async Task UpdateSelectedElection()
     {
         var url = "api/UpdateElection";
+
 
         await Http.PostAsJsonAsync(url, selectedElection);
 
@@ -730,10 +735,10 @@
             CandidateError = null;
             SelectedCandidate = null;
 
-
             var url = $"https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/api/GetCandidates" +
                       $"?code=MbxLbvP1Hc5EDjbf3Yg05Y1lld4Uga-vSbDn5XCP5HiwAzFuCuZKsg==" +
                       $"&electionIdentifier={electionIdentifier}"; 
+
 
             var response = await Http.GetFromJsonAsync<CandidateApiResponse>(url);
 
@@ -792,6 +797,7 @@
         };
 
         // election status
+
     string GetStatusText(ElectionDto e)
     {
         var now = DateTime.UtcNow;
@@ -886,7 +892,7 @@
 
         return $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(SelectedCandidate?.CandidateFullName ?? "Candidate")}&background=CD7F32&color=fff";
     }
-    #region Models
+
 
     public class CreateElectionRequest
     {
@@ -943,6 +949,7 @@
         public ElectionResultsDto Data { get; set; }
     }
 
+
     public class PositionResultDto
     {
         public string PositionName { get; set; }
@@ -976,6 +983,7 @@
         public string manifestorBlobName { get; set; }
         public string manifestorContainer { get; set; }
         public List<string> ProposedPolicies { get; set; } = new();
+
         public PositionDto PositionAimingFor { get; set; }
         public string CandidateFullName { get; set; }
         public bool IsActive { get; set; }
@@ -1002,14 +1010,13 @@
         }
 
     public class PdfResponse
-{
-    public bool IsSuccess { get; set; }
-    public string Data { get; set; }
-}
-public class BlobImageResponse
-{
-    public bool IsSuccess { get; set; }
-    public string Data { get; set; }
-}
-    #endregion
+    {
+        public bool IsSuccess { get; set; }
+        public string Data { get; set; }
+    }
+    public class BlobImageResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string Data { get; set; }
+    }
 }

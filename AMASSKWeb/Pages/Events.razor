@@ -404,9 +404,9 @@
 
         try
         {
-
             var response = await Http.GetFromJsonAsync<ApiResponse>(
             "api/GetEvents?code=dz1Oy8d5tlpgM-T8BzGrDAwMRjsKJGlEkDu87Vnpn8ISAzFueUKpOA==");
+
 
             if (response != null && response.IsSuccess)
             {
@@ -457,6 +457,7 @@
             await OnInitializedAsync();
             await JS.InvokeVoidAsync("closeModal", "createEventModal");
             ResetForm();
+
         }
 
     }
@@ -559,6 +560,7 @@
 
         var url =
         $"api/GetEventAttendees?code=fE9kzjNdcN9UHNJmvi-xs-S2fdJ4MP0lwIjPJWlqgaEEAzFuP8MyZA==&eventIdentifier={eventId}";
+
 
         var result =
         await Http.GetFromJsonAsync<AttendeeResponse>(url);
