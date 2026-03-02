@@ -345,6 +345,7 @@
         {
             var response = await Http.GetFromJsonAsync<ApiResponse>("https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/api/GetEvents" +
             
+
                 );
 
             if (response != null && response.IsSuccess)
@@ -406,12 +407,13 @@
             if (IsEditMode)
             {
                 response = await Http.PostAsJsonAsync(
-
+                     "",
                     NewEvent);
             }
             else
             {
                 response = await Http.PostAsJsonAsync(
+                     "",
                     NewEvent);
             }
 
@@ -508,7 +510,8 @@
     {
         try
         {
-            var url =
+            var url = $"";
+
 
             var result = await Http.GetFromJsonAsync<AttendeeResponse>(url);
 
@@ -531,11 +534,10 @@
     {
         SelectedEventName = eventName;
 
-
         isLoadingAttendees = true;
         SelectedAttendees.Clear();
+        var url = $"";
 
-        var url =
 
         var result = await Http.GetFromJsonAsync<AttendeeResponse>(url);
 

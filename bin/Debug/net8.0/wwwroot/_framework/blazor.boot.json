@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "AMASSKWeb",
   "resources": {
-    "hash": "sha256-gvB2RDuw+/CDmgZ/7L8zWOgn1LJ2EpBnXNtUqOB2DCA=",
+    "hash": "sha256-iiFVqXsWmqKZGrnEBoxxnWxYUCcYZzw+0pAUYl66JjE=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-1QpKPnxEuRCElzcp+e3MrovJeAJkuzqKmRQay/6Aa08="
     },
@@ -209,10 +209,10 @@
       "mscorlib.wasm": "sha256-UnQd0YPXNpwbXsKqO8RAqgUVuwZsSpprfAIPpdV/y1Q=",
       "netstandard.wasm": "sha256-/QbD8JDZyYwfyk89W3qJL3HTAINDCVziZIySHIZcDhw=",
       "System.Private.CoreLib.wasm": "sha256-oBqNgH7R24FqGbaL3XnfQDqn3rk28jERFosgAryKT6U=",
-      "AMASSKWeb.wasm": "sha256-X/A4XDRgST/7BpPzui+v7ZsiINOXwYgHwJzOdPxtSYY="
+      "AMASSKWeb.wasm": "sha256-8fdAyD/309pTvNws5iZ9TGwCGLXllJQXA0Du4q77SlU="
     },
     "pdb": {
-      "AMASSKWeb.pdb": "sha256-hnbEDaaFwKEPtsTPt9RiXKywODSSjIjKQwihFdnlRHw="
+      "AMASSKWeb.pdb": "sha256-9FZL0K7yLA/D5gPt4qT4KtnIWf//unaNG1XBkVmPqPM="
     }
   },
   "cacheBootResources": true,
