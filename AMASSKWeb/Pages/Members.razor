@@ -1,0 +1,122 @@
+﻿@page "/members"
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-0">Members</h4>
+            <small class="text-muted">Manage SSK membership records</small>
+        </div>
+
+    <button class="btn text-white" style="background-color:#CD7F32">
+            <i class="fa-solid fa-plus me-2"></i> Add Member
+        </button>
+    </div>
+
+    <!-- Card -->
+    <div class="card shadow-sm p-3">
+
+        <!-- Search + Filter -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <input type="text" class="form-control w-25" placeholder="Search members..." />
+
+            <button class="btn btn-light border">
+                <i class="fa-solid fa-filter me-2"></i> Filter
+            </button>
+        </div>
+
+        <!-- Table -->
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Specialization</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var member in washirika)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@member.Name</strong><br />
+                                <small class="text-muted">@member.Email</small>
+                            </td>
+
+                            <td>
+                                <span class="badge bg-secondary-subtle text-dark">
+                                    @member.Type
+                                </span>
+                            </td>
+
+                            <td>@member.Specialization</td>
+
+                            <td>
+                                <span class="@GetStatusClass(member.Status)"  style="border-radius:50%">
+                                    @member.Status
+                                </span>
+                            </td>
+
+                            <td>@member.Joined.ToString("yyyy-MM-dd")</td>
+
+                            <td class="text-end">
+                                <i class="fa-solid fa-ellipsis"></i>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+@code {
+
+
+    //page protection
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/", true);
+        }
+    }
+
+    public class Member
+    {
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string Type { get; set; }
+        public string Specialization { get; set; }
+        public string Status { get; set; }
+        public DateTime Joined { get; set; }
+    }
+
+    List<Member> washirika = new()
+    {
+        new() { Name="Dr. James Mwangi", Email="james@hospital.co.ke", Type="Fellow", Specialization="Laparoscopic Surgery", Status="Active", Joined=new DateTime(2019,3,15)},
+        new() { Name="Dr. Amina Osman", Email="amina@aku.edu", Type="Full Member", Specialization="General Surgery", Status="Active", Joined=new DateTime(2020,7,22)},
+        new() { Name="Dr. Peter Kamau", Email="peter@moi.ac.ke", Type="Full Member", Specialization="Cardiothoracic Surgery", Status="Active", Joined=new DateTime(2018,11,1)},
+        new() { Name="Dr. Faith Wanjiku", Email="faith@knh.or.ke", Type="Associate", Specialization="Pediatric Surgery", Status="Pending", Joined=new DateTime(2025,1,10)},
+        new() { Name="Dr. Hassan Ali", Email="hassan@coast.co.ke", Type="Full Member", Specialization="Trauma Surgery", Status="Active", Joined=new DateTime(2021,5,18)},
+        new() { Name="Dr. Lucy Akinyi", Email="lucy@uon.ac.ke", Type="Associate", Specialization="Orthopedic Surgery", Status="Inactive", Joined=new DateTime(2022,9,30)},
+        new() { Name="Dr. David Kiplagat", Email="david@mtrh.go.ke", Type="Fellow", Specialization="Neurosurgery", Status="Active", Joined=new DateTime(2017,2,14)},
+        new() { Name="Dr. Yvonne Kyalo", Email="yvonne@nbi-hosp.co.ke", Type="Full Member", Specialization="Breast Surgery", Status="Active", Joined=new DateTime(2023,4,5)},
+    };
+
+    string GetStatusClass(string status)
+    {
+        return status switch
+        {
+            "Active" => "badge badge-active",
+            "Pending" => "badge bg-light text-dark border",
+            "Inactive" => "badge bg-secondary",
+            _ => "badge bg-secondary"
+        };
+    }
+}

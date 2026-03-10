@@ -1,0 +1,530 @@
+﻿@page "/news"
+@inject HttpClient Http
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>News</PageTitle>
+
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">News</h3>
+            <small class="text-muted">Manage SSK News</small>
+        </div>
+
+        <button class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#createNewsModal">
+            + Create News
+        </button>
+    </div>
+
+    <div class="row">
+
+        @if (newsList == null)
+        {
+            <p>Loading news...</p>
+        }
+        else if (!newsList.Any())
+        {
+            <p>No news available.</p>
+        }
+        else
+        {
+            @foreach (var news in newsList)
+            {
+                  <div class="col-md-4 mb-4">
+    <div class="card news-card shadow-sm">
+
+        <div class="news-image-container">
+
+           <img src="@news.ImageUrl" class="card-img-top news-image" />
+
+            <div class="news-overlay">
+
+                <button class="btn btn-light btn-sm me-2"
+                        @onclick="() => OpenEditModal(news)">
+                      <i class="fa-solid fa-pen"></i>
+                </button>
+
+                <button class="btn btn-light btn-sm me-2"
+                        @onclick="() => ConfirmDelete(news.Id)">
+                       <i class="fa-solid fa-trash"></i>
+                </button>
+
+            </div>
+
+        </div>
+
+                        <div class="card-body">
+                            <h5>@news.Header</h5>
+                            <p class="text-muted">@news.Details</p>
+                        </div>
+
+                        <div class="card-footer text-muted">
+                            @news.CreatedAt.ToString("dd MMM yyyy")
+                        </div>
+
+                    </div>
+                </div>
+            }
+        }
+
+    </div>
+
+</div>
+
+
+<!-- CREATE MODAL -->
+<div class="modal fade" id="createNewsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Create News</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                @if (!string.IsNullOrEmpty(message))
+                {
+                    <div class="alert alert-info">@message</div>
+                }
+
+                <div class="mb-3">
+                    <label>Header</label>
+                    <input class="form-control" @bind="header" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Details</label>
+                    <textarea class="form-control" rows="4" @bind="details"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label>Upload Image</label>
+                    <InputFile OnChange="HandleFileSelected" />
+                </div>
+
+                @if (imagePreview != null)
+                {
+                    <img src="@imagePreview" style="max-height:200px" />
+                }
+
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" @bind="isActive">
+                    <label class="form-check-label">Active</label>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <button class="btn btn-success"
+                        disabled="@isSaving"
+                        @onclick="CreateNews">
+
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                        <span> Saving...</span>
+                    }
+                    else
+                    {
+                        <span>Save News</span>
+                    }
+
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- EDIT MODAL -->
+<div class="modal fade" id="editNewsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Edit News</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="mb-3">
+                    <label>Header</label>
+                    <input class="form-control" @bind="editHeader" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Details</label>
+                    <textarea class="form-control" rows="4" @bind="editDetails"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label>Choose Image</label>
+                    <InputFile OnChange="HandleEditFileSelected" />
+                </div>
+
+                @if (editImagePreview != null)
+                {
+                    <img src="@editImagePreview" style="max-height:200px" />
+                }
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" @bind="editIsActive">
+                    <label class="form-check-label">Active</label>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <button class="btn btn-primary" @onclick="UpdateNews">
+                    Save Changes
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+@code {
+
+    const string Container = "sskdevtests";
+    string returnedBlobName = "";
+
+    List<NewsItem> newsList;
+
+    string header;
+    string details;
+    bool isActive = true;
+
+    string imagePreview;
+    IBrowserFile selectedFile;
+
+    bool isSaving;
+    string message;
+
+
+    string editId;
+    string editHeader;
+    string editDetails;
+    bool editIsActive;
+    DateTime editCreatedAt;
+
+    string editImageBlob;
+    string editImagePreview;
+    IBrowserFile editSelectedFile;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/", true);
+            return;
+        }
+
+        await LoadNews();
+    }
+
+
+    async Task LoadNews()
+    {
+        var result = await Http.GetFromJsonAsync<NewsResponse>(
+            "api/GetNews?society=SSK&onlyActive=false");
+
+        newsList = result?.Data ?? new();
+
+        foreach (var news in newsList)
+        {
+            news.ImageUrl = await GetImageUrl(news);
+        }
+    }
+
+
+    async Task<string> GetImageUrl(NewsItem news)
+    {
+        if (string.IsNullOrEmpty(news.ImageBlobName))
+            return "images/no-image.png";
+
+        try
+        {
+            var response = await Http.GetAsync(
+                $"api/GetImageByBlobName?containerName={news.ImageContainer}&blobName={news.ImageBlobName}");
+
+            if (!response.IsSuccessStatusCode)
+                return "images/no-image.png";
+
+            var result = await response.Content.ReadFromJsonAsync<SasResponse>();
+
+            return result?.Data ?? "images/no-image.png";
+        }
+        catch
+        {
+            return "images/no-image.png";
+        }
+    }
+
+
+    async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var SelectedImage = e.File;
+
+        if (SelectedImage == null)
+            return;
+        try
+        {
+
+
+
+            //upload image to azure blob using upload image using UploadImage
+
+            var content = new MultipartFormDataContent();
+
+            var imageStream = SelectedImage.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            var fileContent = new StreamContent(imageStream);
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(SelectedImage.ContentType);
+
+            // 🔥 predictable blob name
+            var blobName = SelectedImage.Name; // NO .jpg
+
+            // backend expects "image"
+            content.Add(fileContent, "image", blobName);
+
+            var uploadUrl =
+                 "api/UploadImage" +
+                 $"?blobName={Uri.EscapeDataString(blobName)}" +
+                 $"&containerName={Container}";
+
+
+            var response = await Http.PostAsync(uploadUrl, content);
+
+            response.EnsureSuccessStatusCode();
+            var responceContent = await response.Content.ReadFromJsonAsync<UploadBlobResponseDTO>();
+            returnedBlobName = responceContent.BlobName;
+            // var json = await response.Content.ReadAsStringAsync();  
+            
+        }
+        catch(Exception ex)
+        {
+            
+        }
+        using var stream = SelectedImage.OpenReadStream(5 * 1024 * 1024);
+        using var ms = new MemoryStream();
+
+        await stream.CopyToAsync(ms);
+
+        //Get the blobName and containerName Fom the return payload uploadBlobDTO
+        //set returnBlobName to the blobName property of the returned Payload
+        imagePreview =
+            $"data:{SelectedImage.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+
+        
+    }
+
+    //Creating News
+    async Task CreateNews()
+    {
+        try
+        {
+            isSaving = true;
+            
+            var payload = new NewsItem
+            {
+                Id = Guid.NewGuid().ToString(),
+                Society = "SSK",
+                Header = header,
+                Details = details,
+                ImageBlobName = returnedBlobName,
+                ImageContainer = Container,
+                IsActive = isActive,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var response = await Http.PostAsJsonAsync("api/UpsertNews", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadNews();
+                ClearForm();
+            }
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+
+    void ClearForm()
+    {
+        header = "";
+        details = "";
+        imagePreview = null;
+        selectedFile = null;
+        isActive = true;
+    }
+
+
+    async Task ConfirmDelete(string id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Delete this news item?"))
+        {
+            await DeleteNews(id);
+        }
+    }
+
+
+    async Task DeleteNews(string id)
+    {
+        var payload = new { NewsId = id, Society = "SSK" };
+
+        var response = await Http.PostAsJsonAsync("api/DeleteNews", payload);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await LoadNews();
+        }
+    }
+
+
+    async Task OpenEditModal(NewsItem news)
+    {
+        editId = news.Id;
+        editHeader = news.Header;
+        editDetails = news.Details;
+        editImageBlob = news.ImageBlobName;
+        editIsActive = news.IsActive;
+        editCreatedAt = news.CreatedAt;
+
+        editImagePreview = news.ImageUrl;
+
+        await JS.InvokeVoidAsync("openModal", "editNewsModal");
+    }
+
+async Task HandleEditFileSelected(InputFileChangeEventArgs e)
+{
+    var selectedImage = e.File;
+
+    if (selectedImage == null)
+        return;
+
+    try
+    {
+        var content = new MultipartFormDataContent();
+
+        var imageStream = selectedImage.OpenReadStream(10 * 1024 * 1024);
+        var fileContent = new StreamContent(imageStream);
+
+        fileContent.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(selectedImage.ContentType);
+
+        var blobName = selectedImage.Name;
+
+        content.Add(fileContent, "image", blobName);
+
+        var uploadUrl =
+            $"api/UploadImage?blobName={Uri.EscapeDataString(blobName)}&containerName={Container}";
+
+        var response = await Http.PostAsync(uploadUrl, content);
+
+        response.EnsureSuccessStatusCode();
+
+        var uploadResult =
+            await response.Content.ReadFromJsonAsync<UploadBlobResponseDTO>();
+
+        // IMPORTANT
+        editImageBlob = uploadResult.BlobName;
+    }
+    catch
+    {
+        return;
+    }
+
+    using var stream = selectedImage.OpenReadStream(5 * 1024 * 1024);
+    using var ms = new MemoryStream();
+
+    await stream.CopyToAsync(ms);
+
+    editImagePreview =
+        $"data:{selectedImage.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+}
+
+
+  async Task UpdateNews()
+{
+    var payload = new NewsItem
+    {
+        Id = editId,
+        Society = "SSK",
+        Header = editHeader,
+        Details = editDetails,
+        ImageBlobName = editImageBlob, // this now comes from upload
+        ImageContainer = Container,
+        IsActive = editIsActive,
+        CreatedAt = editCreatedAt
+    };
+
+    var response = await Http.PostAsJsonAsync("api/UpsertNews", payload);
+
+    if (response.IsSuccessStatusCode)
+    {
+        await LoadNews();
+        await JS.InvokeVoidAsync("closeModal", "editNewsModal");
+    }
+}
+
+
+    public class NewsResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public List<NewsItem> Data { get; set; }
+    }
+
+    public class NewsItem
+    {
+        public string Id { get; set; }
+        public string Society { get; set; }
+        public string Header { get; set; }
+        public string Details { get; set; }
+        public string ImageBlobName { get; set; }
+        public string ImageContainer { get; set; }
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string ImageUrl { get; set; }
+    }
+
+    public class SasResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public string Data { get; set; }
+    }
+
+public class UploadBlobResponseDTO
+ {
+     public string Message { get; set; }
+     public string ContainerName { get; set; }
+     public string BlobName { get; set; }
+ }
+}

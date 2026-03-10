@@ -1,0 +1,144 @@
+﻿@page "/resources"
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Resources</PageTitle>
+
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h2>Resources</h2>
+            <small>Research papers, guidelines, training materials & reports</small>
+        </div>
+
+        <button class="btn-primary">
+            <i class="bi bi-upload"></i>
+            Upload Resource
+        </button>
+    </div>
+
+    <!-- Table Card -->
+    <div class="table-card">
+        <table class="resources-table">
+
+            <thead>
+                <tr>
+                    <th>Resource</th>
+                    <th>Type</th>
+                    <th>Uploaded By</th>
+                    <th>Date</th>
+                    <th>Downloads</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in ResourcesData)
+                {
+                    <tr>
+                        <td class="resource-name">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <div>
+                                <div class="title">@item.Title</div>
+                                <small>@item.Category</small>
+                            </div>
+                        </td>
+
+                        <td>
+                            <span class="badge-type">
+                                @item.Type
+                            </span>
+                        </td>
+
+                        <td>@item.UploadedBy</td>
+                        <td>@item.Date.ToString("yyyy-MM-dd")</td>
+                        <td>@item.Downloads</td>
+
+                        <td class="actions">
+                            <i class="bi bi-eye"></i>
+                            <i class="bi bi-download"></i>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+
+        </table>
+    </div>
+
+</div>
+
+@code {
+
+    //page protection
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/", true);
+        }
+    }
+
+    public class ResourceItem
+    {
+        public string Title { get; set; }
+        public string Category { get; set; }
+        public string Type { get; set; }
+        public string UploadedBy { get; set; }
+        public DateTime Date { get; set; }
+        public int Downloads { get; set; }
+    }
+
+    List<ResourceItem> ResourcesData = new()
+    {
+        new() {
+            Title="Surgical Guidelines 2026",
+            Category="Surgery",
+            Type="Guidelines",
+            UploadedBy="Dr. James Mwangi",
+            Date=new DateTime(2026,1,15),
+            Downloads=234
+        },
+        new() {
+            Title="Laparoscopic Training Manual",
+            Category="Laparoscopic",
+            Type="Training Material",
+            UploadedBy="Dr. Stanley Aruyaru",
+            Date=new DateTime(2025,11,20),
+            Downloads=189
+        },
+        new() {
+            Title="Trauma Management Protocol",
+            Category="Trauma",
+            Type="Research Paper",
+            UploadedBy="Dr. Hassan Ali",
+            Date=new DateTime(2025,9,5),
+            Downloads=156
+        },
+        new() {
+            Title="CME Accreditation Report 2025",
+            Category="CME",
+            Type="Report",
+            UploadedBy="Admin",
+            Date=new DateTime(2025,12,1),
+            Downloads=98
+        },
+        new() {
+            Title="Patient Safety Standards",
+            Category="Safety",
+            Type="Guidelines",
+            UploadedBy="Dr. Amina Osman",
+            Date=new DateTime(2025,8,14),
+            Downloads=312
+        },
+        new() {
+            Title="Breast Surgery Preceptorship Guide",
+            Category="Breast Surgery",
+            Type="Training Material",
+            UploadedBy="Dr. Yvonne Kyalo",
+            Date=new DateTime(2025,10,22),
+            Downloads=87
+        }
+    };
+}

@@ -1,0 +1,232 @@
+﻿@page "/settings"
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+
+<div class="container my-4">
+
+    <!-- Header -->
+    <div class="mb-4">
+        <h3 class="fw-bold mb-0">Settings</h3>
+        <small class="text-muted">Admin portal configuration</small>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- GENERAL -->
+        <div class="col-md-6">
+            <div class="card settings-card h-100">
+                <div class="card-body">
+
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-globe icon me-2"></i>
+                        <h6 class="fw-bold mb-0">General</h6>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Organization Name</label>
+                        <input class="form-control custom-input"
+                               @bind="organizationName" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Admin Email</label>
+                        <input class="form-control custom-input"
+                               @bind="adminEmail" />
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Website URL</label>
+                        <input class="form-control custom-input"
+                               @bind="websiteUrl" />
+                    </div>
+
+                    <button class="btn save-btn px-4"
+                            @onclick="SaveSettings">
+                        Save Changes
+                    </button>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- NOTIFICATIONS -->
+        <div class="col-md-6">
+            <div class="card settings-card h-100">
+                <div class="card-body">
+
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-bell icon me-2"></i>
+                        <h6 class="fw-bold mb-0">Notifications</h6>
+                    </div>
+
+                    <div class="notification-row">
+                        <div>
+                            <div class="fw-semibold">
+                                <i class="bi bi-envelope me-1 text-muted"></i>
+                                Email Notifications
+                            </div>
+                            <small class="text-muted">
+                                Receive email for new member registrations
+                            </small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" @bind="emailNotifications">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="notification-row">
+                        <div>
+                            <div class="fw-semibold">
+                                <i class="bi bi-megaphone me-1 text-muted"></i>
+                                Election Alerts
+                            </div>
+                            <small class="text-muted">
+                                Get notified about election updates
+                            </small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" @bind="electionAlerts">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="notification-row">
+                        <div>
+                            <div class="fw-semibold">
+                                <i class="bi bi-calendar-event me-1 text-muted"></i>
+                                Event Reminders
+                            </div>
+                            <small class="text-muted">
+                                Send reminders for upcoming events
+                            </small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" @bind="eventReminders">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+
+    body {
+        background-color: #f4f4f4;
+    }
+
+    .settings-card {
+        border-radius: 10px;
+        border: 1px solid #e6e6e6;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .icon {
+        font-size: 1.1rem;
+        color: #c7922f;
+    }
+
+    .custom-input {
+        background-color: #f9f9f9;
+        border: 1px solid #e2e2e2;
+        border-radius: 6px;
+    }
+
+    .save-btn {
+        background-color: #c7922f;
+        color: white;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+
+        .save-btn:hover {
+            background-color: #b07f25;
+            color: white;
+        }
+
+    .notification-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    /* Toggle Switch */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 42px;
+        height: 22px;
+    }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ddd;
+        transition: .3s;
+        border-radius: 34px;
+    }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+    input:checked + .slider {
+        background-color: #c7922f;
+    }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+</style>
+
+@code {
+
+
+
+    private string organizationName;
+    private string adminEmail;
+    private string websiteUrl;
+
+    private bool emailNotifications = true;
+    private bool electionAlerts = true;
+    private bool eventReminders = true;
+
+    private void SaveSettings()
+    {
+        Console.WriteLine("Settings Saved");
+    }
+
+    //page protection
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/", true);
+        }
+    }
+}

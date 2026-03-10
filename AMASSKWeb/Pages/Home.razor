@@ -1,0 +1,189 @@
+﻿@page "/home"
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard</PageTitle>
+
+<div class="container-fluid mt-4">
+
+    <!-- PAGE HEADER -->
+    <div class="mb-4">
+        <h3 class="fw-bold">Dashboard</h3>
+        <p class="text-muted">
+            Welcome back. Here's an overview of the Surgical Society of Kenya.
+        </p>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="row g-4 mb-4">
+
+        <!-- Total Members -->
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 dashboard-card">
+                <div class="d-flex  align-items-center ">
+                    <div class="icon-box bg-light-primary me-3">
+                        <i class="fa-solid fa-users text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Total Members</div>
+                        <h5 class="fw-bold mb-0">1,248</h5>
+                        <small class="text-muted small">+12%</small>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Events -->
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 dashboard-card">
+                <div class="d-flex align-items-center ">
+                    <div class="icon-box bg-light-info me-3">
+                        <i class="fa-solid fa-calendar-days text-info"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Upcoming Events</div>
+                        <h5 class="fw-bold mb-0">8</h5>
+                        <small class="text-muted small">+3 new</small>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Elections -->
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 dashboard-card">
+                <div class="d-flex  align-items-center">
+                    <div class="icon-box bg-light-warning me-3">
+                        <i class="fa-solid fa-check-to-slot text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Active Elections</div>
+                        <h5 class="fw-bold mb-0">1</h5>
+                        <small class="text-muted small">In progress</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registered Surgeons -->
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3 dashboard-card">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-light-success me-3">
+                        <i class="fa-solid fa-user-doctor text-success"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Registered Surgeons</div>
+                        <h5 class="fw-bold mb-0">856</h5>
+                        <small class="text-muted small">+5%</small>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- LOWER SECTION -->
+    <div class="row g-4">
+
+        <!-- RECENT ACTIVITY -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm p-4">
+                <h4 class="fw-bold mb-3">Recent Activity</h4>
+
+                <!-- ITEM -->
+                <div class="activity-item">
+                    <div class="activity-content"> 
+                        <strong>New member registered</strong><br />
+                        <small class="text-muted">Dr. Faith Wanjiku – Full Member</small>
+                    </div>
+                    <div class="activity-time text-muted">
+                        2 hours ago
+                    </div>
+                </div>
+                <hr />
+
+                <div class="activity-item">
+                    <div class="activity-content">
+                        <strong>Event created</strong><br />
+                        <small class="text-muted">SSK Conference Laparoscopic Workshop</small>
+                    </div>
+                    <div class="activity-time text-muted">5 hours ago</div>
+
+                </div>
+                <hr />
+
+                <div class="activity-item">
+                    <div class="activity-content">
+                        <strong>Vote cast</strong><br />
+                        <small class="text-muted">Presidential election – 142 votes</small>
+                    </div>
+                    <div class="activity-time text-muted">1 day ago</div>
+
+                </div>
+                <hr />
+
+                <div class="activity-item">
+                    <div class="activity-content">
+                        <strong>Resource uploaded</strong><br />
+                        <small class="text-muted">Surgical Guidelines 2026.pdf</small>
+                    </div>
+                    <div class="activity-time text-muted">2 days ago</div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MEMBERSHIP BREAKDOWN -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm p-4">
+                <h5 class="fw-bold mb-3">Membership Breakdown</h5>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Fellow</span>
+                    <strong>45</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Full Member</span>
+                    <strong>620</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Associate</span>
+                    <strong>285</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Honorary</span>
+                    <strong>18</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Affiliate</span>
+                    <strong>180</strong>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">SSF</span>
+                    <strong>100</strong>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/", true);
+        }
+    }
+}

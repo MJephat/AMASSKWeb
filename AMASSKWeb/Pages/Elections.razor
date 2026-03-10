@@ -389,7 +389,7 @@
     </div>
 }
 
-@* results modal *@
+@* candidates modal *@
 
 <div class="modal fade" id="candidatesModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
@@ -488,7 +488,7 @@
                                     <!-- Policies -->
                                     <h6>Proposed Policies</h6>
 
-                                    @if (SelectedCandidate?.ProposedPolicies != null)
+                                    @* @if (SelectedCandidate?.ProposedPolicies != null)
                                     {
                                         <ul>
                                             @foreach (var policy in SelectedCandidate.ProposedPolicies)
@@ -496,8 +496,35 @@
                                                 <li>@policy</li>
                                             }
                                         </ul>
-                                    }
+                                    } *@
+                                    @if (qualificationPdfUrls.Any())
+                                    {
+                                        <div class="mt-3">
+                                            <strong>Manifesto Documents</strong>
+                                            <ul class="mt-2">
+                                                @foreach (var pdf in qualificationPdfUrls)
 
+                                                {
+                                                    var rawName = Path.GetFileName(new Uri(pdf).LocalPath);
+                                                    var nameWithoutExt = Path.GetFileNameWithoutExtension(rawName);
+
+                                                    var cleanName = nameWithoutExt
+                                                    .Replace("_", " ")
+                                                    .Replace("-", " ");
+
+                                                    // Capitalize words
+                                                    cleanName = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(cleanName);
+
+                                                    <li>
+                                                        <a href="@pdf" target="_blank" class="text-decoration-none">
+                                                            @cleanName
+                                                        </a>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </div>
+
+                                        }
                                 </div>
                             }
                             else
@@ -537,7 +564,7 @@
 
     private string photoUrl = "/images/default-doctor.png";
     private List<string> qualificationPdfUrls = new();
-    private List<string> qualificationBlobNames = new();
+    private List<string> manifestorBlobName = new();
 
     //page protection
     protected override void OnInitialized()
@@ -666,15 +693,21 @@
             isLoadingResults = true;
             showResultsModal = true;
 
-            // var client = new HttpClient();
-            results = new ElectionResultsDto(); // clear old data
-
+            results = new ElectionResultsDto();
 
             var url =
-                $"https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/api/GetElectionResults?code=-qep2VM85CYto6E_ZezhP-vpOyFiQOC8b2tXjcXZaCG6AzFue8ELQQ==&electionIdentifier={electionIdentifier}";
+            $"api/GetElectionResults?code=-qep2VM85CYto6E_ZezhP-vpOyFiQOC8b2tXjcXZaCG6AzFue8ELQQ==&electionIdentifier={electionIdentifier}";
 
-            results = await Http.GetFromJsonAsync<ElectionResultsDto>(url)
-                ?? new ElectionResultsDto();
+            var response = await Http.GetFromJsonAsync<ElectionResultsApiResponse>(url);
+
+            if (response?.IsSuccess == true)
+            {
+                results = response.Data ?? new ElectionResultsDto();
+            }
+            else
+            {
+                Console.WriteLine(response?.ErrorMessage);
+            }
         }
         catch (Exception ex)
         {
@@ -725,23 +758,29 @@
 
     //selector candidate
     async Task SelectCandidate(CandidateDto candidate)
-{
-    SelectedCandidate = candidate;
-
-    // reset first so UI refreshes immediately
-    photoUrl = "/images/default-doctor.png";
-
-    // load the real photo if it exists
-    var doctor = new DoctorProfile
     {
-        PhotoBlobName = candidate.ProfilePicBlobName,
-        PhotoBlobContainer = "sskdoctorphotos"
-    };
+        SelectedCandidate = candidate;
 
-    photoUrl = await GetPhotoUrlAsync(doctor);
+        photoUrl = "/images/default-doctor.png";
 
-    StateHasChanged();
-}
+        var Candidate = new CandidateDto
+        {
+            ProfilePicBlobName = candidate.ProfilePicBlobName,
+            ProfilePicContainer = "sskdevtests"
+        };
+
+        photoUrl = await GetPhotoUrlAsync(Candidate);
+
+        // ADD THIS
+        manifestorBlobName.Clear();
+
+        if (!string.IsNullOrWhiteSpace(candidate.manifestorBlobName))
+            manifestorBlobName.Add(candidate.manifestorBlobName);
+
+        await LoadPdfUrls();
+
+        StateHasChanged();
+    }
 
     static CreateElectionRequest CreateNewModel() =>
         new()
@@ -752,6 +791,7 @@
             IsActive = true
         };
 
+        // election status
     string GetStatusText(ElectionDto e)
     {
         var now = DateTime.UtcNow;
@@ -805,44 +845,46 @@
     }
 
 
-    //candidate Manifestals
+    //candidate Manifestos
     private async Task LoadPdfUrls()
     {
         qualificationPdfUrls.Clear();
-        foreach (var blob in qualificationBlobNames)
+
+        foreach (var blob in manifestorBlobName)
         {
             try
             {
-                var url = $"api/GetPDFByBlobName?containerName=sskdoctorqualifications&blobName={Uri.EscapeDataString(blob)}";
+                var url =
+                    $"api/GetPDFByBlobName?containerName={SelectedCandidate.manifestorContainer}&blobName={Uri.EscapeDataString(blob)}";
+
                 var response = await Http.GetFromJsonAsync<PdfResponse>(url);
+
                 if (response?.IsSuccess == true && !string.IsNullOrWhiteSpace(response.Data))
                     qualificationPdfUrls.Add(response.Data);
-                else
-                    Console.WriteLine("Failed to get PDF URL for blob: " + blob);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Exception getting PDF URL for blob: " + blob + " - " + ex.Message);
+                Console.WriteLine(ex.Message);
             }
         }
     }
 
     // candidate profile
-    private async Task<string> GetPhotoUrlAsync(DoctorProfile doctor)
+    private async Task<string> GetPhotoUrlAsync(CandidateDto Candidate)
     {
-        if (string.IsNullOrWhiteSpace(doctor.PhotoBlobName) || string.IsNullOrWhiteSpace(doctor.PhotoBlobContainer))
+        if (string.IsNullOrWhiteSpace(Candidate.ProfilePicBlobName) || string.IsNullOrWhiteSpace(Candidate.ProfilePicContainer))
             return "/images/default-doctor.png";
 
         try
         {
-            var url = $"api/GetImageByBlobName?containerName={doctor.PhotoBlobContainer}&blobName={Uri.EscapeDataString(doctor.PhotoBlobName)}";
+            var url = $"api/GetImageByBlobName?containerName={Candidate.ProfilePicContainer}&blobName={Uri.EscapeDataString(Candidate.ProfilePicBlobName)}";
             var response = await Http.GetFromJsonAsync<BlobImageResponse>(url);
             if (response?.IsSuccess == true && !string.IsNullOrEmpty(response.Data))
                 return response.Data;
         }
         catch { }
 
-    return $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(SelectedCandidate?.CandidateFullName ?? "Candidate")}&background=CD7F32&color=fff";
+        return $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(SelectedCandidate?.CandidateFullName ?? "Candidate")}&background=CD7F32&color=fff";
     }
     #region Models
 
@@ -894,6 +936,13 @@
         public List<PositionResultDto> PositionResults { get; set; } = new(); //new prevents null crashes
     }
 
+    public class ElectionResultsApiResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public ElectionResultsDto Data { get; set; }
+    }
+
     public class PositionResultDto
     {
         public string PositionName { get; set; }
@@ -923,6 +972,9 @@
         public string CandidateEmail { get; set; }
         public string CandidateBio { get; set; }
         public string ProfilePicBlobName { get; set; }
+        public String ProfilePicContainer { get; set; }
+        public string manifestorBlobName { get; set; }
+        public string manifestorContainer { get; set; }
         public List<string> ProposedPolicies { get; set; } = new();
         public PositionDto PositionAimingFor { get; set; }
         public string CandidateFullName { get; set; }
