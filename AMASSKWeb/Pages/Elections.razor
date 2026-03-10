@@ -1,0 +1,963 @@
+﻿@page "/elections"
+@inject HttpClient Http
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Elections</PageTitle>
+
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">Elections</h3>
+            <small class="text-muted">Manage SSK 2026 General Elections</small>
+        </div>
+
+        <button class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#createElectionModal">
+            + Create Election
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    else if (!ElectionsItem.Any())
+    {
+        <div class="alert alert-info">No active elections found.</div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var election in ElectionsItem)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <h6 class="fw-bold mb-0"
+                                    style="cursor:pointer"
+                                    @onclick="() => LoadResults(election.ElectionIdentifier)">
+
+                                    @election.ElectionIdentifier
+
+                                </h6>
+
+                                <span class="@GetStatusBadge(election)">
+                                    @GetStatusText(election)
+                                </span>
+                            </div>
+
+                            <div class="text-muted small mb-3">
+                                @election.ElectionStartDate.ToLocalTime().ToString("dd MMM yyyy") -
+                                @election.ElectionEndDate.ToLocalTime().ToString("dd MMM yyyy")
+                            </div>
+
+                            <hr />
+
+                            @foreach (var pos in election.ElectoralPositions ?? new())
+                            {
+                                <div class="mb-2">
+                                    <strong>@pos.Position</strong>
+                                    <div class="text-muted small">@pos.Functions</div>
+                                </div>
+                            }
+
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+
+                                <div class="text-muted small"
+                                     style="cursor:pointer"
+                                     data-bs-toggle="modal"
+                                     data-bs-target="#candidatesModal"
+                                     @onclick="() => LoadCandidates(election.ElectionIdentifier)">
+
+                                    <i class="fa-solid fa-users me-2"></i>
+                                    @GetCandidateCount(election.ElectionIdentifier) Candidates
+                                </div>
+
+                                <div class="mt-3 d-flex justify-content-end gap-2">
+
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editElectionModal"
+                                            @onclick="() => SetElectionForEdit(election)">
+                                        Edit
+                                    </button>
+
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => DeleteElection(election.ElectionIdentifier)">
+                                        <i class="fa-solid fa-trash"></i>
+
+                                    </button>
+
+                                </div>
+</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* create modal *@
+
+<div class="modal fade" id="createElectionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Create Election</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Start Date</label>
+                        <input type="datetime-local"
+                               class="form-control"
+                               @bind="StartDateLocal" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label>End Date</label>
+                        <input type="datetime-local"
+                               class="form-control"
+                               @bind="EndDateLocal" />
+                    </div>
+                </div>
+
+                <hr />
+
+                <h6>Electoral Positions</h6>
+
+                @foreach (var position in Model.ElectoralPositions)
+                {
+                    <div class="card p-3 mb-2">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <input class="form-control"
+                                       placeholder="Position"
+                                       @bind="position.Position" />
+                            </div>
+                            <div class="col-md-4">
+                                <input class="form-control"
+                                       placeholder="Functions"
+                                       @bind="position.Functions" />
+                            </div>
+                            <div class="col-md-3">
+                                <input class="form-control"
+                                       placeholder="Icon"
+                                       @bind="position.IconBlobName" />
+                            </div>
+                            <div class="col-md-1">
+                                <button class="btn btn-danger w-100"
+                                        @onclick="() => RemovePosition(position)">
+                                    X
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <button class="btn btn-outline-primary btn-sm"
+                        @onclick="AddPosition">
+                    + Add Position
+                </button>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <button class="btn btn-success"
+                        @onclick="SubmitElection">
+                    Create
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+@* edit modal *@
+
+<div class="modal fade" id="editElectionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Edit Election</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="mb-3">
+                    <label>Election Identifier</label>
+                    <input class="form-control"
+                           @bind="selectedElection.ElectionIdentifier" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Start Date</label>
+                        <input type="datetime-local"
+                               class="form-control"
+                               @bind="EditStartLocal" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>End Date</label>
+                        <input type="datetime-local"
+                               class="form-control"
+                               @bind="EditEndLocal" />
+                    </div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           @bind="selectedElection.IsActive" />
+                    <label class="form-check-label">Active</label>
+                </div>
+
+                <hr />
+
+                <h6>Electoral Positions</h6>
+
+                @foreach (var position in selectedElection.ElectoralPositions)
+                {
+                    <div class="card p-3 mb-2">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <input class="form-control"
+                                       @bind="position.Position" />
+                            </div>
+                            <div class="col-md-4">
+                                <input class="form-control"
+                                       @bind="position.Functions" />
+                            </div>
+                            <div class="col-md-3">
+                                <input class="form-control"
+                                       @bind="position.IconBlobName" />
+                            </div>
+                            <div class="col-md-1">
+                                <button class="btn btn-danger w-100"
+                                        @onclick="() => RemoveEditPosition(position)">
+                                    X
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <button class="btn btn-outline-primary btn-sm"
+                        @onclick="AddEditPosition">
+                    + Add Position
+                </button>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <button class="btn btn-primary"
+                        @onclick="UpdateSelectedElection">
+                    Save Changes
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@* results modal *@
+@if (showResultsModal)
+{
+    <div class="results-backdrop" @onclick="CloseModal">
+        <div class="results-modal" @onclick:stopPropagation>
+
+            <!-- Header -->
+            <div class="results-header">
+                <div>
+                    <h4 class="mb-1">Election Results</h4>
+                    <small class="text-muted">
+                        @results?.ElectionIdentifier
+                    </small>
+                </div>
+
+                <button class="close-btn" @onclick="CloseModal">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="results-body">
+
+                @if (isLoadingResults)
+                {
+                    <div class="text-center p-4">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-3">Loading results...</p>
+                    </div>
+                }
+                else if (results?.PositionResults?.Any() == true)
+                {
+                    @foreach (var position in results.PositionResults)
+                    {
+                        var totalVotes = position.Candidates.Sum(c => c.VoteCount);
+                        var leaderVotes = position.Candidates.Max(c => c.VoteCount);
+
+                        <div class="position-section">
+
+                            <div class="position-header">
+                                @position.PositionName
+                            </div>
+
+                            <div class="results-grid header-row">
+                                <div>Candidate</div>
+                                <div>Email</div>
+                                <div>Votes</div>
+                                <div>%</div>
+                                <div>Status</div>
+                            </div>
+
+                            @foreach (var candidate in position.Candidates
+                                            .OrderByDescending(c => c.VoteCount))
+                            {
+                                var percentage = totalVotes == 0
+                                ? 0
+                                : (candidate.VoteCount * 100.0) / totalVotes;
+
+                                <div class="results-grid data-row">
+
+                                    <div class="candidate-name">
+                                        @candidate.CandidateFullName
+                                    </div>
+
+                                    <div class="email">
+                                        @candidate.CandidateEmail
+                                    </div>
+
+                                    <div>
+                                        @candidate.VoteCount
+                                    </div>
+
+                                    <div>
+                                        @percentage.ToString("0.0")%
+                                    </div>
+
+                                    <div>
+                                        @if (candidate.VoteCount == leaderVotes && totalVotes > 0)
+                                        {
+                                            <span class="leader-pill">Leading</span>
+                                        }
+                                    </div>
+
+                                </div>
+                            }
+
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-center">No results available.</p>
+                }
+
+            </div>
+
+        </div>
+    </div>
+}
+
+@* results modal *@
+
+<div class="modal fade" id="candidatesModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Candidates</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                @if (IsLoadingCandidates)
+                {
+                    <div class="text-center">
+                        <div class="spinner-border"></div>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(CandidateError))
+                {
+                    <div class="alert alert-danger">
+                        @CandidateError
+                    </div>
+                }
+                else
+                {
+                    <div class="row">
+
+                        <!-- LEFT: TABLE -->
+                        <div class="col-md-5">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        
+                                        <th>Position</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var candidate in Candidates)
+                                    {
+                                        <tr style="cursor:pointer"
+                                            @onclick="() => SelectCandidate(candidate)">
+                                            <td>@candidate.CandidateFullName</td>
+                                            <td>@candidate.PositionAimingFor?.Position</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- RIGHT: PROFILE -->
+                        <div class="col-md-7">
+
+                            @if (SelectedCandidate != null)
+                            {
+                                <div class="card shadow-sm p-4">
+
+                                    <div class="row align-items-center">
+
+                                        <!-- LEFT: Name + Position -->
+                                        <div class="col-md-8">
+
+                                            <h4 class="mb-1">@SelectedCandidate.CandidateFullName</h4>
+
+                                            <p class="text-muted mb-2">
+                                                @SelectedCandidate.PositionAimingFor?.Position
+                                            </p>
+
+                                            <div class="mt-2">
+                                                <strong>Email:</strong>
+                                                @SelectedCandidate.CandidateEmail
+                                            </div>
+
+                                        </div>
+
+                                        <!-- RIGHT: Photo -->
+                                        <div class="col-md-4 text-end">
+
+                                            <img src="@photoUrl"
+                                                 class="rounded-circle shadow-sm"
+                                                 style="width:100px;height:100px;object-fit:cover;"
+                                                 />
+
+                                        </div>
+
+                                    </div>
+
+                                    <hr />
+
+                                    <!-- Bio -->
+                                    <p>@SelectedCandidate.CandidateBio</p>
+
+                                    <!-- Policies -->
+                                    <h6>Proposed Policies</h6>
+
+                                    @if (SelectedCandidate?.ProposedPolicies != null)
+                                    {
+                                        <ul>
+                                            @foreach (var policy in SelectedCandidate.ProposedPolicies)
+                                            {
+                                                <li>@policy</li>
+                                            }
+                                        </ul>
+                                    }
+
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-muted text-center mt-5">
+                                    Select a candidate to view profile
+                                </div>
+                            }
+
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private bool isLoading = true;
+    private string errorMessage;
+
+    private List<ElectionDto> ElectionsItem = new();
+
+    private CreateElectionRequest Model = CreateNewModel();
+
+    private bool showResultsModal = false;
+    private ElectionResultsDto results = new();
+    private bool isLoadingResults = false;
+
+    private List<CandidateDto> Candidates = new();
+    private CandidateDto? SelectedCandidate;
+    private bool IsLoadingCandidates = false;
+    private string CandidateError;
+
+    private string photoUrl = "/images/default-doctor.png";
+    private List<string> qualificationPdfUrls = new();
+    private List<string> qualificationBlobNames = new();
+
+    //page protection
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/", true);
+        }
+    }
+
+
+    private ElectionDto selectedElection = new()
+
+    {
+        ElectoralPositions = new()
+    };
+
+    void CloseModal()
+    {
+        showResultsModal = false;
+    }
+
+    #region Date Handling
+
+    DateTime StartDateLocal
+    {
+        get => Model.ElectionStartDate.ToLocalTime();
+        set => Model.ElectionStartDate = value.ToUniversalTime();
+    }
+
+    DateTime EndDateLocal
+    {
+        get => Model.ElectionEndDate.ToLocalTime();
+        set => Model.ElectionEndDate = value.ToUniversalTime();
+    }
+
+    DateTime EditStartLocal
+    {
+        get => selectedElection.ElectionStartDate.ToLocalTime();
+        set => selectedElection.ElectionStartDate = value.ToUniversalTime();
+    }
+
+    DateTime EditEndLocal
+    {
+        get => selectedElection.ElectionEndDate.ToLocalTime();
+        set => selectedElection.ElectionEndDate = value.ToUniversalTime();
+    }
+
+    #endregion
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadElections();
+    }
+
+    async Task LoadElections()
+    {
+        try
+        {
+            isLoading = true;
+
+            var url = "api/GetElections" + "?code=4iPfBVXzLPtVAmK-PrSzWEe4t1eog_oV8g0AX6M4mXCjAzFuIGuNgw==&onlyActive=true";
+
+            var response = await Http.GetFromJsonAsync<ApiResponse>(url);
+
+            ElectionsItem = response?.Data ?? new();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+
+        isLoading = false;
+    }
+
+    void AddPosition() => Model.ElectoralPositions.Add(new());
+    void RemovePosition(ElectoralPosition p) => Model.ElectoralPositions.Remove(p);
+
+    void AddEditPosition() => selectedElection.ElectoralPositions.Add(new());
+    void RemoveEditPosition(ElectoralPositionDto p) => selectedElection.ElectoralPositions.Remove(p);
+
+    async Task SubmitElection()
+    {
+        var url = "api/CreateElection";
+
+        await Http.PostAsJsonAsync(url, Model);
+
+        Model = CreateNewModel();
+        await LoadElections();
+    }
+
+    async Task UpdateSelectedElection()
+    {
+        var url = "api/UpdateElection";
+
+        await Http.PostAsJsonAsync(url, selectedElection);
+
+        await LoadElections();
+    }
+
+    void SetElectionForEdit(ElectionDto election)
+    {
+        selectedElection = new ElectionDto
+        {
+            Id = election.Id,
+            ElectionIdentifier = election.ElectionIdentifier,
+            ElectionStartDate = election.ElectionStartDate,
+            ElectionEndDate = election.ElectionEndDate,
+            IsActive = election.IsActive,
+            ElectionType = election.ElectionType,
+            ElectoralPositions = election.ElectoralPositions?
+                .Select(p => new ElectoralPositionDto
+                {
+                    Position = p.Position,
+                    Functions = p.Functions,
+                    IconBlobName = p.IconBlobName
+                }).ToList() ?? new()
+        };
+    }
+
+    //election results
+    async Task LoadResults(string electionIdentifier)
+    {
+        try
+        {
+            isLoadingResults = true;
+            showResultsModal = true;
+
+            // var client = new HttpClient();
+            results = new ElectionResultsDto(); // clear old data
+
+
+            var url =
+                $"https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/api/GetElectionResults?code=-qep2VM85CYto6E_ZezhP-vpOyFiQOC8b2tXjcXZaCG6AzFue8ELQQ==&electionIdentifier={electionIdentifier}";
+
+            results = await Http.GetFromJsonAsync<ElectionResultsDto>(url)
+                ?? new ElectionResultsDto();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isLoadingResults = false;
+        }
+    }
+
+    //Candidate
+    async Task LoadCandidates(string electionIdentifier)
+    {
+        photoUrl = "/images/default-doctor.png";
+
+        try
+        {
+            IsLoadingCandidates = true;
+            CandidateError = null;
+            SelectedCandidate = null;
+
+
+            var url = $"https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/api/GetCandidates" +
+                      $"?code=MbxLbvP1Hc5EDjbf3Yg05Y1lld4Uga-vSbDn5XCP5HiwAzFuCuZKsg==" +
+                      $"&electionIdentifier={electionIdentifier}"; 
+
+            var response = await Http.GetFromJsonAsync<CandidateApiResponse>(url);
+
+            if (response?.IsSuccess == true)
+                Candidates = response.Data ?? new();
+            else
+                CandidateError = response?.ErrorMessage ?? "Failed to load candidates.";
+        }
+        catch (Exception ex)
+        {
+            CandidateError = ex.Message;
+        }
+
+        IsLoadingCandidates = false;
+    }
+
+    //real time counts
+    int GetCandidateCount(string electionIdentifier)
+    {
+        return Candidates.Count(c => c.ElectionIdentifier == electionIdentifier);
+    }
+
+    //selector candidate
+    async Task SelectCandidate(CandidateDto candidate)
+{
+    SelectedCandidate = candidate;
+
+    // reset first so UI refreshes immediately
+    photoUrl = "/images/default-doctor.png";
+
+    // load the real photo if it exists
+    var doctor = new DoctorProfile
+    {
+        PhotoBlobName = candidate.ProfilePicBlobName,
+        PhotoBlobContainer = "sskdoctorphotos"
+    };
+
+    photoUrl = await GetPhotoUrlAsync(doctor);
+
+    StateHasChanged();
+}
+
+    static CreateElectionRequest CreateNewModel() =>
+        new()
+        {
+            ElectoralPositions = new(),
+            ElectionStartDate = DateTime.UtcNow,
+            ElectionEndDate = DateTime.UtcNow.AddDays(7),
+            IsActive = true
+        };
+
+    string GetStatusText(ElectionDto e)
+    {
+        var now = DateTime.UtcNow;
+        if (now < e.ElectionStartDate) return "Upcoming";
+        if (now > e.ElectionEndDate) return "Closed";
+        return "Ongoing";
+    }
+
+    string GetStatusBadge(ElectionDto e)
+    {
+        var now = DateTime.UtcNow;
+        if (now < e.ElectionStartDate) return "badge bg-info";
+        if (now > e.ElectionEndDate) return "badge bg-secondary";
+        return "badge bg-success";
+    }
+
+    ///delete Election
+    async Task DeleteElection(string electionIdentifier)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm",
+            $"Delete election '{electionIdentifier}' ?");
+
+        if (!confirm) return;
+
+        try
+        {
+            var url =
+            "api/DeleteElection?code=cTQWrZjHHTBNiX3dVyetCXtK7HdU8IGFiXVlEk72UgBxAzFumsH6EA==";
+
+            var body = new
+            {
+                ElectionIdentifier = electionIdentifier
+            };
+
+            var response = await Http.PostAsJsonAsync(url, body);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadElections();
+            }
+            else
+            {
+                var text = await response.Content.ReadAsStringAsync();
+                Console.WriteLine(text);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+
+    //candidate Manifestals
+    private async Task LoadPdfUrls()
+    {
+        qualificationPdfUrls.Clear();
+        foreach (var blob in qualificationBlobNames)
+        {
+            try
+            {
+                var url = $"api/GetPDFByBlobName?containerName=sskdoctorqualifications&blobName={Uri.EscapeDataString(blob)}";
+                var response = await Http.GetFromJsonAsync<PdfResponse>(url);
+                if (response?.IsSuccess == true && !string.IsNullOrWhiteSpace(response.Data))
+                    qualificationPdfUrls.Add(response.Data);
+                else
+                    Console.WriteLine("Failed to get PDF URL for blob: " + blob);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception getting PDF URL for blob: " + blob + " - " + ex.Message);
+            }
+        }
+    }
+
+    // candidate profile
+    private async Task<string> GetPhotoUrlAsync(DoctorProfile doctor)
+    {
+        if (string.IsNullOrWhiteSpace(doctor.PhotoBlobName) || string.IsNullOrWhiteSpace(doctor.PhotoBlobContainer))
+            return "/images/default-doctor.png";
+
+        try
+        {
+            var url = $"api/GetImageByBlobName?containerName={doctor.PhotoBlobContainer}&blobName={Uri.EscapeDataString(doctor.PhotoBlobName)}";
+            var response = await Http.GetFromJsonAsync<BlobImageResponse>(url);
+            if (response?.IsSuccess == true && !string.IsNullOrEmpty(response.Data))
+                return response.Data;
+        }
+        catch { }
+
+    return $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(SelectedCandidate?.CandidateFullName ?? "Candidate")}&background=CD7F32&color=fff";
+    }
+    #region Models
+
+    public class CreateElectionRequest
+    {
+        public string Id { get; set; } = "";
+        public List<ElectoralPosition> ElectoralPositions { get; set; } = new();
+        public DateTime ElectionStartDate { get; set; }
+        public DateTime ElectionEndDate { get; set; }
+        public bool IsActive { get; set; }
+        public int ElectionType { get; set; }
+    }
+
+    public class ElectoralPosition
+    {
+        public string Position { get; set; } = "";
+        public string Functions { get; set; } = "";
+        public string IconBlobName { get; set; } = "";
+    }
+
+    public class ElectionDto
+    {
+        public string Id { get; set; }
+        public string ElectionIdentifier { get; set; }
+        public List<ElectoralPositionDto> ElectoralPositions { get; set; } = new();
+        public DateTime ElectionStartDate { get; set; }
+        public DateTime ElectionEndDate { get; set; }
+        public bool IsActive { get; set; }
+        public int ElectionType { get; set; }
+    }
+
+    public class ElectoralPositionDto
+    {
+        public string Position { get; set; } = "";
+        public string Functions { get; set; } = "";
+        public string IconBlobName { get; set; } = "";
+    }
+
+    public class ApiResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public List<ElectionDto> Data { get; set; }
+    }
+
+    public class ElectionResultsDto
+    {
+        public string ElectionIdentifier { get; set; }
+        public List<PositionResultDto> PositionResults { get; set; } = new(); //new prevents null crashes
+    }
+
+    public class PositionResultDto
+    {
+        public string PositionName { get; set; }
+        public List<CandidateResultDto> Candidates { get; set; } = new();
+    }
+
+    public class CandidateResultDto
+    {
+        public string CandidateEmail { get; set; }
+        public string CandidateFullName { get; set; }
+        public int VoteCount { get; set; }
+    }
+    public class CandidateApiResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public List<CandidateDto> Data { get; set; }
+    }
+
+    public class CandidateDto
+    {
+        public string Id { get; set; }
+        public string ElectionIdentifier { get; set; }
+        public string CandidateFirstName { get; set; }
+        public string CandidateMiddleName { get; set; }
+        public string CandidateLastName { get; set; }
+        public string CandidateEmail { get; set; }
+        public string CandidateBio { get; set; }
+        public string ProfilePicBlobName { get; set; }
+        public List<string> ProposedPolicies { get; set; } = new();
+        public PositionDto PositionAimingFor { get; set; }
+        public string CandidateFullName { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class PositionDto
+    {
+        public string Position { get; set; }
+        public string Functions { get; set; }
+        public string IconBlobName { get; set; }
+    }
+     public class DoctorProfile { 
+            public string Id { get; set; } 
+            public string Email { get; set; } 
+            public string FirstName { get; set; } 
+            public string LastName { get; set; } 
+            public string PhoneNumber { get; set; } 
+            public string Specialty { get; set; } 
+            public string Details { get; set; } 
+            public List<string>? Facilities { get; set; } 
+            public string Region { get; set; } 
+            public string PhotoBlobName { get; set; } 
+            public string PhotoBlobContainer { get; set; } 
+        }
+
+    public class PdfResponse
+{
+    public bool IsSuccess { get; set; }
+    public string Data { get; set; }
+}
+public class BlobImageResponse
+{
+    public bool IsSuccess { get; set; }
+    public string Data { get; set; }
+}
+    #endregion
+}
