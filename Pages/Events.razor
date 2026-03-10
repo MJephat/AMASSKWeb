@@ -1,0 +1,628 @@
+﻿@page "/events"
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="container-fluid py-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Events</h4>
+            <small class="text-muted">
+                Manage conferences, workshops & courses
+            </small>
+        </div>
+
+        <button class="btn text-white"
+                style="background-color:#CD7F32;"
+                data-bs-toggle="modal"
+                data-bs-target="#createEventModal">
+            <i class="fa-solid fa-plus me-2"></i>
+            Create Event
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-secondary"></div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var item in EventsItem)
+            {
+                <div class="col-lg-4 col-md-6">
+                    <div class="card shadow-sm p-3 h-100">
+
+                        <!-- Top Row -->
+                        <div class="d-flex justify-content-between mb-2">
+
+                            <span class="@GetTypeBadge(item.EventTypePartitionKey)">
+                                @item.EventTypePartitionKey
+                            </span>
+
+                            @if (item.IsActive)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactive</span>
+                            }
+                        </div>
+
+                        <!-- Title -->
+                        <h6 class="fw-bold">@item.Name</h6>
+
+                        <!-- Description -->
+                        <p class="text-muted small">
+                            @item.Description
+                        </p>
+                        <!-- Dates -->
+                        <div class="text-muted small mb-2">
+                            <i class="fa-regular fa-calendar me-2"></i>
+                            @(GetDisplayStartDate(item).ToString("dd MMM yyyy")) -
+                            @item.EndDate.ToLocalTime().ToString("dd MMM yyyy")
+                        </div>
+                        <!-- Location -->
+                        <div class="text-muted small mb-2">
+                            <i class="fa-solid fa-location-dot me-2"></i>
+                            Aga Khan University Hospital
+                        </div>
+                        <div class="mt-3 d-flex justify-content-between align-items-center">
+
+                            <!-- Left: Attendees -->
+                        <div class="text-muted small"
+                             style="cursor:pointer"
+                             @onclick="() => ShowAttendees(item.Id, item.Name)"
+                             data-bs-toggle="modal"
+                             data-bs-target="#attendeeModal">
+
+                            <i class="fa-solid fa-users me-2"></i>
+
+                            @(AttendeeCounts.ContainsKey(item.Id)
+                                                    ? AttendeeCounts[item.Id]
+                                                    : 0)
+
+                        attendees
+                    </div>
+
+                            <!-- Right: Edit Button -->
+                            <button class="btn btn-sm btn-outline-brown" style="border-color:saddlebrown"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#createEventModal"
+                                    @onclick="() => EditEvent(item)">
+                                <i class="fa-solid fa-pen me-1"></i>
+                                Edit
+                            </button>
+
+                        </div>
+
+                        <!-- Cost Schedule -->
+                        <div class="border-top pt-2 mt-2">
+                            @* <div class="fw-semibold small mb-1">
+                                Cost Schedule
+                            </div> *@
+
+                            @if (item.CostSchedule != null && item.CostSchedule.Any())
+                            {
+                                @foreach (var cost in item.CostSchedule)
+                                {
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span>@cost.Description</span>
+                                        <span class="fw-bold">
+                                            KES @cost.Amount.ToString("N0")
+                                        </span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-muted small">
+                                    No cost schedule defined
+                                </div>
+                            }
+                        </div>
+
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+@* Modal *@
+<div class="modal fade" id="createEventModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    @(IsEditMode ? "Update Event" : "Create Event")
+                </h5>               
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <!-- Event Type -->
+                <div class="mb-3">
+                    <label class="form-label">Event Type</label>
+                    <select class="form-select" @bind="NewEvent.TypeOfEvent">
+                        <option value="Conference">Conference</option>
+                        <option value="Workshop">Workshop</option>
+                        <option value="Course">Course</option>
+                        <option value="CME">CME</option>
+                    </select>
+                </div>
+
+                <!-- Name -->
+                <div class="mb-3">
+                    <label class="form-label">Event Name</label>
+                    <input class="form-control" @bind="NewEvent.Name" />
+                </div>
+
+                <!-- Description -->
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" rows="3"
+                              @bind="NewEvent.Description"></textarea>
+                </div>
+
+                <!-- Dates -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Start Date</label>
+                        <input type="datetime-local"
+                               class="form-control"
+                               @bind="StartDateLocal" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">End Date</label>
+                        <input type="datetime-local"
+                               class="form-control"
+                               @bind="EndDateLocal" />
+                    </div>
+
+                   
+                </div>
+                
+                <!-- Cost Schedule -->
+                <hr />
+        <h6>Cost Schedule</h6>
+
+        @foreach (var cost in NewEvent.CostSchedule)
+        {
+            <div class="row mb-2">
+                <div class="col-md-5">
+                         <select class="form-select"
+                         @bind-Value="cost.Description"
+                         @bind-Value:event="onchange"
+                         @bind-Value:after="() => OnCostTypeChanged(cost)">
+                        <option value="">Select Type</option>
+                        <option value="Early Bird">Early Bird</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Free">Free</option>
+                    </select>
+                </div>
+
+                <div class="col-md-5">
+                    <input type="number"
+                           class="form-control"
+                           placeholder="Amount"
+                           @bind="cost.Amount"
+                           disabled="@IsFree(cost)" />
+                </div>
+
+                <div class="col-md-2">
+                    <button class="btn btn-danger w-100"
+                            @onclick="() => RemoveCost(cost)">
+                        X
+                    </button>
+                </div>
+            </div>
+        }
+
+        <button class="btn btn-sm btn-outline-primary"
+                @onclick="AddCost">
+            + Add Cost Type
+        </button>
+
+                <!-- Active -->
+                <div class="form-check mt-3">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           @bind="NewEvent.IsActive" />
+                    <label class="form-check-label">
+                        Active Event
+                    </label>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <button class="btn btn-success"
+                        @onclick="SaveEvent">
+                    @(IsEditMode ? "Update Event" : "Save Event")
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="attendeeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Event Attendees for @SelectedEventName</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                @if (isLoadingAttendees)
+                {
+                    <div class="text-center">
+                        <div class="spinner-border"></div>
+                    </div>
+                }
+                else if (!SelectedAttendees.Any())
+                {
+                    <div class="text-muted">No attendees found.</div>
+                }
+                else
+                {
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Paid</th>
+                                <th>Registered</th>
+                                <th>Cost Type</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var attendee in SelectedAttendees)
+                            {
+                                <tr>
+                                    <td>@attendee.Email</td>
+                                    <td>@attendee.HasPaid</td>
+                                    <td>@attendee.IsRegistered</td>
+                                    <td>@attendee.SelectedCost?.Description</td>
+                                    <td>@attendee.SelectedCost?.Amount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    bool isLoading = true;
+    bool IsEditMode = false;
+    string EditingEventId = null;
+    bool IsFree(CostScheduleDto cost) => cost.Description == "Free";
+    string errorMessage;
+
+
+    private Dictionary<string, int> AttendeeCounts = new();
+    private List<EventAttendee> SelectedAttendees = new();
+    private bool isLoadingAttendees = false;
+
+    private string? SelectedEventName;
+
+    DateTime StartDateLocal = DateTime.Now;
+    DateTime EndDateLocal = DateTime.Now.AddDays(1);
+
+    List<EventDto> EventsItem = new();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse>("https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/api/GetEvents" +
+            
+
+                );
+
+            if (response != null && response.IsSuccess)
+            {
+                EventsItem = response.Data;
+
+                foreach (var ev in EventsItem)
+                {
+                    await LoadAttendeeCount(ev.Id);
+                    // await Task.WhenAll(EventsItem.Select(ev => LoadAttendeeCount(ev.Id)));
+                }
+            }
+            else
+            {
+                errorMessage = response?.ErrorMessage ?? "Failed to load events.";
+            }
+
+
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+
+        isLoading = false;
+    }
+
+    //date
+    DateTime GetDisplayStartDate(EventDto item)
+    {
+        var start = item.StartDate.ToLocalTime().Date;
+        var today = DateTime.Now.Date;
+
+        return start < today ? today : start;
+    }
+
+    // create event
+    CreateEventRequest NewEvent = new()
+    {
+        CostSchedule = new List<CostScheduleDto>()
+    };
+
+
+
+    void RemoveCost(CostScheduleDto cost)
+    {
+        NewEvent.CostSchedule.Remove(cost);
+    }
+
+    async Task SaveEvent()
+    {
+        try
+        {
+            NewEvent.StartDate = StartDateLocal.ToUniversalTime();
+            NewEvent.EndDate = EndDateLocal.ToUniversalTime();
+
+            HttpResponseMessage response;
+
+            if (IsEditMode)
+            {
+                response = await Http.PostAsJsonAsync(
+                     "",
+                    NewEvent);
+            }
+            else
+            {
+                response = await Http.PostAsJsonAsync(
+                     "",
+                    NewEvent);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                await OnInitializedAsync();
+                await JS.InvokeVoidAsync("closeModal", "createEventModal");
+
+                ResetForm();
+            }
+            else
+            {
+                errorMessage = "Operation failed.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+    
+    // cost cahnge function
+    void OnCostTypeChanged(CostScheduleDto cost)
+    {
+        if (cost.Description == "Free")
+        {
+            cost.Amount = 0;
+        }
+    }
+
+    //avoiding duplicate payments
+    void AddCost()
+    {
+        var allTypes = new List<string> { "Early Bird", "Regular", "Free" };
+
+        var usedTypes = NewEvent.CostSchedule
+            .Where(c => !string.IsNullOrEmpty(c.Description))
+            .Select(c => c.Description)
+            .ToList();
+
+        var available = allTypes.Except(usedTypes).ToList();
+
+        if (!available.Any())
+            return;
+
+        NewEvent.CostSchedule.Add(new CostScheduleDto
+        {
+            Description = available.First()
+        });
+    }
+
+    //edit event
+    void EditEvent(EventDto item)
+    {
+        IsEditMode = true;
+        EditingEventId = item.Id;
+
+        NewEvent = new CreateEventRequest
+        {
+            Id = item.Id,
+            TypeOfEvent = item.EventTypePartitionKey,
+            Name = item.Name,
+            Description = item.Description,
+            CostSchedule = item.CostSchedule?
+                .Select(c => new CostScheduleDto
+                {
+                    Description = c.Description,
+                    Amount = c.Amount
+                }).ToList() ?? new List<CostScheduleDto>(),
+            IsActive = item.IsActive
+        };
+
+        StartDateLocal = item.StartDate.ToLocalTime();
+        EndDateLocal = item.EndDate.ToLocalTime();
+    }
+    
+    //reset form
+    void ResetForm()
+    {
+        IsEditMode = false;
+        EditingEventId = null;
+
+        NewEvent = new CreateEventRequest
+        {
+            CostSchedule = new List<CostScheduleDto>()
+        };
+
+        StartDateLocal = DateTime.Now;
+        EndDateLocal = DateTime.Now.AddDays(1);
+    }
+
+    //load atendees
+    private async Task LoadAttendeeCount(string eventId)
+    {
+        try
+        {
+            var url = $"";
+
+
+            var result = await Http.GetFromJsonAsync<AttendeeResponse>(url);
+
+            if (result != null && result.IsSuccess)
+                AttendeeCounts[eventId] = result.Data.Count;
+            else
+                AttendeeCounts[eventId] = 0;
+        }
+        catch
+        {
+            AttendeeCounts[eventId] = 0;
+        }
+    }
+
+
+
+
+    //show attendees
+    private async Task ShowAttendees(string eventId, string eventName)
+    {
+        SelectedEventName = eventName;
+
+        isLoadingAttendees = true;
+        SelectedAttendees.Clear();
+        var url = $"";
+
+
+        var result = await Http.GetFromJsonAsync<AttendeeResponse>(url);
+
+        if (result != null && result.IsSuccess)
+            SelectedAttendees = result.Data;
+
+        isLoadingAttendees = false;
+    }
+
+    public class ApiResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public List<EventDto> Data { get; set; }
+    }
+
+    public class EventDto
+    {
+        public string Id { get; set; }
+        public int TypeOfEvent { get; set; }
+        public string EventTypePartitionKey { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public List<CostScheduleDto> CostSchedule { get; set; }
+        public bool IsActive { get; set; }
+        public string EventPicBlobName { get; set; }
+        public string EventPicsContainer { get; set; }
+
+        public string Location { get; set; }
+        public int AttendeeCount { get; set; }
+    }
+
+    public class CostScheduleDto
+    {
+        public string Description { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+    public class CreateEventRequest
+    {
+        public string Id { get; set; } = "";
+        public string TypeOfEvent { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public List<CostScheduleDto> CostSchedule { get; set; }
+        public bool IsActive { get; set; }
+    }
+    public class AttendeeResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+        public List<EventAttendee> Data { get; set; } = new();
+    }
+
+    public class EventAttendee
+    {
+        public string Id { get; set; } = string.Empty;
+        public string EventIdentifier { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public bool HasPaid { get; set; }
+        public bool IsRegistered { get; set; }
+
+        public SelectedCost? SelectedCost { get; set; }
+    }
+
+    public class SelectedCost
+    {
+        public string Description { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+    }
+   
+
+    string GetTypeBadge(string type) =>
+    type switch
+    {
+        "Workshop" => "badge badge-workshop",
+        "Conference" => "badge badge-conference",
+        "Course" => "badge badge-course",
+        "CME" => "badge badge-cme",
+        _ => "badge bg-secondary"
+    };
+
+  
+}

@@ -1,0 +1,149 @@
+﻿@page "/courses"
+
+<div class="container-fluid py-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Courses </h4>
+            <small class="text-muted">
+                Manage conferences, workshops, CME programs & courses
+            </small>
+        </div>
+
+        <button class="btn text-white"
+                style="background-color:#CD7F32;">
+            <i class="fa-solid fa-plus me-2"></i>
+            Create Cousrses
+        </button>
+    </div>
+
+    <!-- Grid -->
+    <div class="row g-4">
+        @foreach (var item in EventList)
+        {
+            <div class="col-lg-4 col-md-6">
+                <div class="card shadow-sm p-3 event-card">
+
+                    <!-- Top Badges -->
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="@GetTypeBadge(item.Type)">
+                            @item.Type
+                        </span>
+
+                        <span class="@GetStatusBadge(item.Status)">
+                            @item.Status
+                        </span>
+                    </div>
+
+                    <!-- Title -->
+                    <h6 class="fw-bold">@item.Title</h6>
+
+                    <!-- Date -->
+                    <div class="text-muted small mb-2">
+                        <i class="fa-regular fa-calendar me-2"></i>
+                        @item.Date
+                    </div>
+
+                    <!-- Location -->
+                    <div class="text-muted small mb-2">
+                        <i class="fa-solid fa-location-dot me-2"></i>
+                        @item.Location
+                    </div>
+
+                    <!-- Bottom Row -->
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="text-muted small">
+                            <i class="fa-solid fa-users me-2"></i>
+                            @item.Attendees attendees
+                        </div>
+
+                        <div class="fw-bold">
+                            @item.Price
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+
+    public class EventItem
+    {
+        public string Type { get; set; }
+        public string Status { get; set; }
+        public string Title { get; set; }
+        public string Date { get; set; }
+        public string Location { get; set; }
+        public int Attendees { get; set; }
+        public string Price { get; set; }
+    }
+
+    List<EventItem> EventList = new()
+    {
+        new() {
+            Type="Workshop",
+            Status="Upcoming",
+            Title="SSK Conference Laparoscopic Workshop",
+            Date="22–24 April 2026",
+            Location="Mombasa Pride Inn Hotel",
+            Attendees=85,
+            Price="KES 2,536"
+        },
+  
+        new() {
+            Type="Workshop",
+            Status="Completed",
+            Title="Pre-Conference Breast Preceptorship",
+            Date="1 April 2024",
+            Location="Aga Khan University Hospital",
+            Attendees=45,
+            Price="KES 3,000"
+        },
+        new() {
+            Type="Course",
+            Status="Upcoming",
+            Title="PAACS Surgical Training Course",
+            Date="15–17 June 2026",
+            Location="Kenyatta National Hospital",
+            Attendees=30,
+            Price="KES 4,500"
+        },
+        new() {
+            Type="CME",
+            Status="Upcoming",
+            Title="Trauma Surgery CME Program",
+            Date="10 May 2026",
+            Location="Moi Teaching & Referral Hospital",
+            Attendees=60,
+            Price="Free"
+        },
+        new() {
+            Type="Workshop",
+            Status="Upcoming",
+            Title="Minimally Invasive Surgery Workshop",
+            Date="8–9 July 2026",
+            Location="Nairobi Hospital",
+            Attendees=0,
+            Price="KES 3,200"
+        }
+    };
+
+    string GetStatusBadge(string status) =>
+        status == "Upcoming"
+            ? "badge badge-upcoming"
+            : "badge badge-completed";
+
+    string GetTypeBadge(string type) =>
+        type switch
+        {
+            "Workshop" => "badge badge-workshop",
+            "Conference" => "badge badge-conference",
+            "Course" => "badge badge-course",
+            "CME" => "badge badge-cme",
+            _ => "badge bg-secondary"
+        };
+}

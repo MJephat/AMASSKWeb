@@ -1,0 +1,159 @@
+﻿@page "/committees"
+
+<div class="container my-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">Committees</h3>
+            <small class="text-muted">SSK committees and their mandates</small>
+        </div>
+
+        <button class="btn add-btn px-4">
+            + Add Committee
+        </button>
+    </div>
+
+    <!-- Committees Grid -->
+    <div class="row g-4">
+
+        @foreach (var committee in committees)
+        {
+            <div class="col-md-6">
+                <div class="card committee-card h-100">
+                    <div class="card-body">
+
+                        <!-- Title + Icon -->
+                        <div class="d-flex align-items-start mb-2">
+                            <div class="shield me-2"></div>
+                            <div>
+                                <h6 class="fw-bold mb-1">@committee.Title</h6>
+                                <small class="text-muted">
+                                    Chairman: <b>@committee.Chair</b>
+                                    &nbsp;&nbsp;
+                                    Vice: <b>@committee.Vice</b>
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Items -->
+                        <ul class="mt-3 committee-list">
+                            @foreach (var item in committee.Items)
+                            {
+                                <li>@item</li>
+                            }
+                        </ul>
+
+                    </div>
+                </div>
+            </div>
+        }
+
+    </div>
+</div>
+
+<style>
+    .committee-card {
+        border-radius: 10px;
+        border: 1px solid #e6e6e6;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        transition: 0.2s ease-in-out;
+    }
+
+        .committee-card:hover {
+            transform: translateY(-4px);
+        }
+
+    .add-btn {
+        background-color: #c7922f;
+        color: white;
+        font-weight: 500;
+        border-radius: 6px;
+    }
+
+        .add-btn:hover {
+            background-color: #b07f25;
+            color: white;
+        }
+
+    .shield {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #c7922f;
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+
+    .committee-list {
+        padding-left: 1rem;
+        font-size: 0.9rem;
+    }
+
+        .committee-list li {
+            margin-bottom: 6px;
+        }
+</style>
+
+@code {
+
+    private List<Committee> committees = new()
+    {
+        new Committee
+        {
+            Title = "Surgical Training & Education",
+            Chair = "Dr. David Karuri MBS",
+            Vice = "Dr. Amina Rashid",
+            Items = new()
+            {
+                "Addressing educational needs of practicing surgeons in academic and community-based settings",
+                "Designing and implementing innovative educational programs at different career stages",
+                "Supporting surgeons in fulfilling maintenance of certification requirements",
+                "Monitoring regional chapters on continuous professional development"
+            }
+        },
+        new Committee
+        {
+            Title = "CME Committee",
+            Chair = "Dr. Peter Kamau",
+            Vice = "Dr. Lucy Akinyi",
+            Items = new()
+            {
+                "Organizing continuous medical education programs nationally",
+                "Accreditation of CME activities for members",
+                "Coordinating with international bodies for training standards"
+            }
+        },
+        new Committee
+        {
+            Title = "Trauma Research",
+            Chair = "Dr. Hassan Ali",
+            Vice = "Dr. Faith Wanjiku",
+            Items = new()
+            {
+                "Coordinating trauma surgery research across Kenya",
+                "Publishing findings in peer-reviewed journals",
+                "Advocating for improved trauma care infrastructure"
+            }
+        },
+        new Committee
+        {
+            Title = "Ethics & Professional Standards",
+            Chair = "Dr. James Mwangi",
+            Vice = "Dr. Grace Muthoni",
+            Items = new()
+            {
+                "Upholding ethical standards in surgical practice",
+                "Reviewing complaints and disciplinary matters",
+                "Developing guidelines for professional conduct"
+            }
+        }
+    };
+
+    private class Committee
+    {
+        public string Title { get; set; }
+        public string Chair { get; set; }
+        public string Vice { get; set; }
+        public List<string> Items { get; set; }
+    }
+}
