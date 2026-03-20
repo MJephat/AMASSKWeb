@@ -439,6 +439,10 @@
         return start < today ? today : start;
     }
 
+    /// <summary>
+    /// SAVE FUNCTION
+    /// </summary>
+    
     async Task SaveEvent()
     {
 
@@ -462,6 +466,10 @@
 
     }
 
+    /// <summary>
+    /// EDIT EVENT
+    /// </summary>
+    /// <param name="item"></param>
     void EditEvent(EventDto item)
     {
 
@@ -489,6 +497,12 @@
 
     }
 
+    /// <summary>
+    ///DELETE AN EVENT
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="type"></param>
+    /// <returns></returns> 
     async Task DeleteEvent(string id, string type)
     {
 
@@ -554,7 +568,7 @@
         EndDateLocal = DateTime.Now.AddDays(1);
 
     }
-
+    ///attendes count
     async Task LoadAttendeeCount(string eventId)
     {
 
@@ -570,7 +584,7 @@
 
     }
 
-
+// show attendees
     async Task ShowAttendees(string eventId, string name)
     {
 

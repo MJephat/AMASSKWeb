@@ -1,6 +1,9 @@
 ﻿@page "/home"
+@using System.Text.Json
+@using static AMASSKWeb.Pages.Doctors
 @inject AuthState AuthState
 @inject NavigationManager Navigation
+@inject HttpClient Http
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -26,8 +29,10 @@
                     </div>
                     <div>
                         <div class="text-muted small">Total Members</div>
-                        <h5 class="fw-bold mb-0">1,248</h5>
-                        <small class="text-muted small">+12%</small>
+                        <h5 class="fw-bold mb-0">
+                            @membersCount
+                        </h5>
+                        @* <small class="text-muted small">+12%</small> *@
                     </div>
                     
                 </div>
@@ -43,8 +48,8 @@
                     </div>
                     <div>
                         <div class="text-muted small">Upcoming Events</div>
-                        <h5 class="fw-bold mb-0">8</h5>
-                        <small class="text-muted small">+3 new</small>
+                        <h5 class="fw-bold mb-0">@upcomingEventsCount</h5>   
+                        @* <small class="text-muted small">+3 new</small> *@
                     </div>
 
                 </div>
@@ -60,8 +65,8 @@
                     </div>
                     <div>
                         <div class="text-muted small">Active Elections</div>
-                        <h5 class="fw-bold mb-0">1</h5>
-                        <small class="text-muted small">In progress</small>
+                        <h5 class="fw-bold mb-0">@activeElectionCount  <span class="text-muted small">In progress</span></h5>
+                       
                     </div>
                 </div>
             </div>
@@ -76,8 +81,8 @@
                     </div>
                     <div>
                         <div class="text-muted small">Registered Surgeons</div>
-                        <h5 class="fw-bold mb-0">856</h5>
-                        <small class="text-muted small">+5%</small>
+                        <h5 class="fw-bold mb-0">@doctorsCount</h5>                       
+                        @* <small class="text-muted small">+5%</small> *@
                     </div>
 
                 </div>
@@ -106,15 +111,21 @@
                 </div>
                 <hr />
 
-                <div class="activity-item">
-                    <div class="activity-content">
-                        <strong>Event created</strong><br />
-                        <small class="text-muted">SSK Conference Laparoscopic Workshop</small>
-                    </div>
-                    <div class="activity-time text-muted">5 hours ago</div>
+                @foreach (var activity in recentEvent)
+                {
+                    <div class="activity-item">
+                        <div class="activity-content">
+                            <strong>@activity.Name</strong><br />
+                            <small class="text-muted">@activity.Description</small>
+                        </div>
 
-                </div>
-                <hr />
+                        <div class="activity-time text-muted">
+                            @activity.startDate.ToString("dd MMM yyyy")
+                        </div>
+                    </div>
+                    <hr />
+                }
+               
 
                 <div class="activity-item">
                     <div class="activity-content">
@@ -179,11 +190,140 @@
 </div>
 
 @code {
-    protected override void OnInitialized()
+    private int doctorsCount = 0;
+    private int upcomingEventsCount = 0;
+    private int activeElectionCount = 0;
+    private int membersCount = 0; // to be implemented later
+
+
+
+    private List<Event> recentEvent = new();
+
+    protected override async Task OnInitializedAsync()
     {
         if (!AuthState.IsLoggedIn)
         {
             Navigation.NavigateTo("/", true);
+            return;
         }
+
+        await LoadDoctorsCount();
+        await LoadUpcomingEventsCount();
+        await LoadActiveElectionCount();
+        await LoadMembersCount();
+    }
+
+    //count docs(surgeons)
+    private async Task LoadDoctorsCount()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetFullMembers");
+
+            if (response != null && response.IsSuccess)
+            {
+                doctorsCount = response.Data?.Count ?? 0;
+            }
+            else
+            {
+                Console.WriteLine(response?.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+    //count docs(member)
+    private async Task LoadMembersCount()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetMembers");
+
+            if (response != null && response.IsSuccess)
+            {
+                membersCount = response.Data?.Count ?? 0;
+            }
+            else
+            {
+                Console.WriteLine(response?.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    // get active elections
+    private async Task LoadUpcomingEventsCount()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse>(
+                "api/GetEvents?code=dz1Oy8d5tlpgM-T8BzGrDAwMRjsKJGlEkDu87Vnpn8ISAzFueUKpOA=="
+            );
+
+            if (response != null && response.IsSuccess)
+            {
+                upcomingEventsCount = response.Data?
+                    .Where(e => e.startDate > DateTime.Now)
+                    .Count() ?? 0;
+
+                Console.WriteLine($"Upcoming Events: {upcomingEventsCount}");
+
+                recentEvent = response.Data?
+                .Take(1)
+                .ToList() ?? new List<Event>();
+            }
+            else
+            {
+                Console.WriteLine(response?.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    // get election in progress
+    private async Task LoadActiveElectionCount()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse>(
+                "api/GetElections?code=4iPfBVXzLPtVAmK-PrSzWEe4t1eog_oV8g0AX6M4mXCjAzFuIGuNgw==&onlyActive=true"
+            );
+
+            if (response != null && response.IsSuccess)
+            {
+                activeElectionCount = response.Data?.Count ?? 0;
+            }
+            else
+            {
+                Console.WriteLine(response?.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    public class Event
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public DateTime startDate { get; set; }
+    }
+
+    public class ApiResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+        public List<Event>? Data { get; set; }
     }
 }

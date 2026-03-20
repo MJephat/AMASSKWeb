@@ -1,7 +1,8 @@
 ﻿@page "/chapters"
+@using System.Text.Json.Serialization
 @inject AuthState AuthState
 @inject NavigationManager Navigation
-
+@inject HttpClient Http
 
 <PageTitle>Chapters</PageTitle>
 
@@ -14,131 +15,311 @@
             <small>Regional chapter meetings & schedules</small>
         </div>
 
-        <button class="btn-primary">
+        <button class="btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#createChapterModal">
             <i class="bi bi-plus-lg"></i> Add Chapter
         </button>
     </div>
 
-    <!-- Cards Grid -->
-    <div class="chapters-grid">
-        @foreach (var chapter in ChapterList)
-        {
-            <div class="chapter-card">
+    @if (isLoading)
+    {
+        <p>Loading chapters...</p>
+    }
+    else if (ChapterList == null || !ChapterList.Any())
+    {
+        <p>No chapters found.</p>
+    }
+    else
+    {
+        <!-- Cards Grid -->
+        <div class="chapters-grid">
+            @foreach (var chapter in ChapterList)
+            {
+                <div class="chapter-card">
 
-                <div class="card-top">
-                    <div class="location">
-                        <i class="bi bi-geo-alt"></i>
-                        <strong>@chapter.Name</strong>
+                    <div class="card-top">
+                        <div class="location">
+                            <i class="bi bi-geo-alt"></i>
+                            <strong>@chapter.Name</strong>
+                        </div>
+
+                        <span class="badge @GetBadgeClass(chapter.Status)">
+                            @chapter.Status
+                        </span>
                     </div>
 
-                    <span class="badge @GetBadgeClass(chapter.Status)">
-                        @chapter.Status
-                    </span>
+                    <div class="card-body">
+                       <div>
+                            <i class="bi bi-gear" style="font-style:italic"></i>
+                        @chapter.Admin
+                    </div>
+                        <div>
+                            <i class="bi bi-calendar-event"></i>
+                            @chapter.Schedule
+                        </div>
+
+                        <div>
+                            <i class="bi bi-clock"></i>
+                            @chapter.Time
+                        </div>
+                    </div>
+                    
+
+                    <div class="card-footer">
+                        <span>
+                            <i class="bi bi-calendar-check"></i>
+                            Next: @chapter.NextDate
+                        </span>
+
+                        <span class="clickable"
+                              data-bs-toggle="modal"
+                              data-bs-target="#membersModal"
+                              @onclick="() => SetMembers(chapter.MemberEmails, chapter.Name)">
+                            <i class="bi bi-people"></i>
+                            @chapter.Members members
+                        </span>
+
+                        <button class="btn btn-sm "
+                                @onclick="() => DeleteChapter(chapter.GeoRegion)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* get members list *@
+<div class="modal fade" id="membersModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Chapter Members for @SelectedChapterName</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                @if (SelectedMembers != null && SelectedMembers.Any())
+                {
+                    <ul class="list-group">
+                        @foreach (var email in SelectedMembers)
+                        {
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>@email</span>
+                                <i class="bi bi-envelope"></i>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p>No members found.</p>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@* create chapter *@
+<div class="modal fade" id="createChapterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Create Chapter</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="mb-3">
+                    <label>Region</label>
+                    @if (string.IsNullOrWhiteSpace(NewChapter.GeoRegion))
+                    {
+                        <small class="text-danger">Region is required</small>
+                    }
+                    <select class="form-select" @bind="NewChapter.GeoRegion">
+                        <option value="">-- Select Region --</option>
+
+                        @foreach (var region in Regions)
+                        {
+                            <option value="@region">@region</option>
+                        }
+                    </select>
                 </div>
 
-                <div class="card-body">
-                    <div>
-                        <i class="bi bi-calendar-event"></i>
-                        @chapter.Schedule
-                    </div>
-
-                    <div>
-                        <i class="bi bi-clock"></i>
-                        @chapter.Time
-                    </div>
+                <div class="mb-3">
+                    <label>Admin Email</label>
+                    <input class="form-control" @bind="NewChapter.AdminEmail" />
                 </div>
 
-                <div class="card-footer">
-                    <span>
-                        <i class="bi bi-calendar-check"></i>
-                        Next: @chapter.NextDate
-                    </span>
-
-                    <span>
-                        <i class="bi bi-people"></i>
-                        @chapter.Members members
-                    </span>
+                <div class="mb-3">
+                    <label>Members (comma separated)</label>
+                    <textarea class="form-control" @bind="MembersInput"></textarea>
                 </div>
 
             </div>
-        }
-    </div>
 
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" @onclick="CreateChapter">Create</button>
+            </div>
+
+        </div>
+    </div>
 </div>
 
 @code {
 
-//page protection
-    protected override void OnInitialized()
+    List<Chapter> ChapterList = new();
+    bool isLoading = true;
+
+    List<string> SelectedMembers = new();
+    bool showMembersModal = false;
+
+    //setting memnbers
+    string SelectedChapterName = "";
+    CreateChapterRequest NewChapter = new();
+    string MembersInput = "";
+
+    List<string> Regions = new()
+{
+      "Coast",
+      "Central",
+      "Nairobi",
+      "SouthRift",
+      "NorthRift",
+      "Northern",
+      "Eastern",
+      "WesternNyanza"
+};
+
+    void SetMembers(List<string> members, string chapterName)
+    {
+        SelectedMembers = members ?? new List<string>();
+        SelectedChapterName = chapterName;
+
+    }
+
+    protected override async Task OnInitializedAsync()
     {
         if (!AuthState.IsLoggedIn)
         {
             Navigation.NavigateTo("/", true);
+            return;
+        }
+
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<ChapterDto>>>("api/GetChapters");
+
+            if (response?.IsSuccess == true)
+            {
+                ChapterList = response.Data.Select(x => new Chapter
+                {
+                    Name = GetRegionName(x.GeoRegion),
+                    GeoRegion = GetRegionName(x.GeoRegion), // or raw value if backend expects int/string
+                    Admin = x.AdminEmail,
+                    Schedule = "TBD",
+                    Time = "TBD",
+                    NextDate = "TBD",
+                    Members = x.Members?.Count ?? 0,
+                    Status = "Active",
+                    MemberEmails = x.Members ?? new List<string>()
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
-    public class Chapter
+    //create new Chapter
+    async Task CreateChapter()
     {
-        public string Name { get; set; }
-        public string Schedule { get; set; }
-        public string Time { get; set; }
-        public string NextDate { get; set; }
-        public int Members { get; set; }
-        public string Status { get; set; }
+        if (string.IsNullOrWhiteSpace(NewChapter.GeoRegion))
+            return;
+
+        try
+        {
+            NewChapter.Members = MembersInput
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .ToList();
+
+            var response = await Http.PostAsJsonAsync("api/CreateChapter", NewChapter);
+
+            if (response.IsSuccessStatusCode)
+            {
+                NewChapter = new CreateChapterRequest();
+                MembersInput = "";
+
+                await OnInitializedAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
     }
 
-    List<Chapter> ChapterList = new()
+    //delete
+    async Task DeleteChapter(string region)
     {
-        new Chapter {
-            Name="Nairobi CBD",
-            Schedule="Every 2 Weeks on a Friday",
-            Time="8:00am - 10:00am",
-            NextDate="May 9, 2025",
-            Members=120,
-            Status="Active"
-        },
-        new Chapter {
-            Name="Westlands",
-            Schedule="Every 2 Weeks on a Friday",
-            Time="7:30am - 9:30am",
-            NextDate="Launching Soon",
-            Members=0,
-            Status="Coming Soon"
-        },
-        new Chapter {
-            Name="Mombasa",
-            Schedule="Monthly, Last Saturday",
-            Time="9:00am - 11:00am",
-            NextDate="May 31, 2025",
-            Members=45,
-            Status="Active"
-        },
-        new Chapter {
-            Name="Eldoret",
-            Schedule="Monthly, First Friday",
-            Time="8:00am - 10:00am",
-            NextDate="June 6, 2025",
-            Members=38,
-            Status="Active"
-        },
-        new Chapter {
-            Name="Kisumu",
-            Schedule="Bi-Monthly",
-            Time="9:00am - 11:00am",
-            NextDate="June 14, 2025",
-            Members=22,
-            Status="Active"
-        },
-        new Chapter {
-            Name="Nakuru",
-            Schedule="Quarterly",
-            Time="8:30am - 10:30am",
-            NextDate="July 2025",
-            Members=15,
-            Status="Planning"
-        }
-    };
+        try
+        {
+            var response = await Http.DeleteAsync($"api/DeleteChapter?geoRegion={region}");
 
+            if (response.IsSuccessStatusCode)
+            {
+                // Refresh list after delete
+                await OnInitializedAsync();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine(error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    //regions
+    string GetRegionName(int region)
+    {
+        return region switch
+        {
+           0 => "Coast",
+           1 => "Central",
+           2 => "Nairobi",
+           3 => "SouthRift",
+           4 => "NorthRift",
+           5 => "Northern",
+           6 => "Eastern",
+           7 => "WesternNyanza"
+        };
+    }
+
+    //status
     string GetBadgeClass(string status)
     {
         return status switch
@@ -148,5 +329,45 @@
             "Planning" => "badge-planning",
             _ => ""
         };
+    }
+
+   
+
+    // UI Model (what your page actually uses)
+    public class Chapter
+    {
+        public string Name { get; set; }
+        public string GeoRegion { get; set; }  // 👈 ADD THIS
+        public string Schedule { get; set; }
+        public string Admin { get; set; }
+        public string Time { get; set; }
+        public string NextDate { get; set; }
+        public int Members { get; set; }
+        public string Status { get; set; }
+        public List<string> MemberEmails { get; set; } = new();
+    }
+
+    // API Wrapper
+    public class ApiResponse<T>
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public T Data { get; set; }
+    }
+
+    // API DTO (exactly from backend)
+    public class ChapterDto
+    {
+        public string Id { get; set; }
+        public int GeoRegion { get; set; }
+        public string AdminEmail { get; set; }
+        public List<string> Members { get; set; }
+    }
+    public class CreateChapterRequest
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string GeoRegion { get; set; }
+        public string AdminEmail { get; set; }
+        public List<string> Members { get; set; } = new();
     }
 }

@@ -1,6 +1,7 @@
 ﻿@page "/committees"
 @inject AuthState AuthState
 @inject NavigationManager Navigation
+@inject HttpClient Http
 
 <div class="container my-4">
 
@@ -11,7 +12,7 @@
             <small class="text-muted">SSK committees and their mandates</small>
         </div>
 
-        <button class="btn add-btn px-4">
+        <button class="btn add-btn px-4" @onclick="OpenCreateModal">
             + Add Committee
         </button>
     </div>
@@ -23,28 +24,63 @@
         {
             <div class="col-md-6">
                 <div class="card committee-card h-100">
-                    <div class="card-body">
+                    <div class="card-body d-flex flex-column justify-content-between">
 
-                        <!-- Title + Icon -->
-                        <div class="d-flex align-items-start mb-2">
-                            <div class="shield me-2"></div>
-                            <div>
-                                <h6 class="fw-bold mb-1">@committee.Title</h6>
-                                <small class="text-muted">
-                                    Chairman: <b>@committee.Chair</b>
-                                    &nbsp;&nbsp;
-                                    Vice: <b>@committee.Vice</b>
-                                </small>
+                        <!-- Top Section -->
+                        <div class="d-flex justify-content-between align-items-start">
+
+                            <!-- Left: Icon + Info -->
+                            <div class="d-flex">
+
+                                <!-- Icon -->
+                                <div class="committee-icon me-3">
+                                    <i class="@GetCommitteeIcon(committee.Type)"></i>
+                                </div>
+
+                                <!-- Text -->
+                                <div>
+                                    <h6 class="fw-bold mb-1">@committee.Title</h6>
+
+                                    <small class="text-muted d-block mb-1">
+                                        @GetCommitteeTypeLabel(committee.Type)
+                                    </small>
+
+                                    <small class="text-muted">
+                                        Chairman: <b>@committee.Chair</b>
+                                    </small>
+                                </div>
                             </div>
+
+                            <!-- Right: Delete -->
+                            <button class="btn btn-sm btn-light text-danger border-0"
+                                    title="Delete"
+                                    @onclick="() => ConfirmDelete(committee)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+
                         </div>
 
-                        <!-- Items -->
-                        <ul class="mt-3 committee-list">
-                            @foreach (var item in committee.Items)
-                            {
-                                <li>@item</li>
-                            }
-                        </ul>
+                        <!-- Bottom Section -->
+                        <div class="mt-3 d-flex justify-content-between align-items-center">
+
+                            <!-- Members Count -->
+                            <small class="text-muted">
+                                @committee.Items.Count Members
+                            </small>
+
+                            <button class="btn members-btn"
+                                    @onclick="() => OpenApplications(committee)">
+                                <i class="bi bi-person-lines-fill"></i> Applications
+                            </button>
+
+                            <!-- View Button -->
+                            <button class="btn members-btn"
+                                    @onclick="() => ShowMembers(committee)">
+                                <i class="bi bi-people-fill me-1"></i>
+                                View
+                            </button>
+
+                        </div>
 
                     </div>
                 </div>
@@ -53,6 +89,121 @@
 
     </div>
 </div>
+
+@* madal show members *@
+@if (selectedCommittee != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">@selectedCommittee.Title Members</h5>
+                    <button class="btn-close" @onclick="CloseModal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    @if (selectedCommittee.Items.Any())
+                    {
+                        <ul class="list-group">
+                            @foreach (var member in selectedCommittee.Items)
+                            {
+                                <li class="list-group-item">
+                                    <i class="bi bi-person me-2"></i> @member
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No members found.</p>
+                    }
+
+                </div>
+                <div class="mb-3">
+                    <input class="form-control"
+                           placeholder="Enter member email"
+                           @bind="newMemberEmail" />
+
+                    
+                </div>
+
+                <div class="modal-footer">
+                    <button class="members-btn"
+                            @onclick="AddMemberToSelected">
+                        Add Member
+                    </button>
+                    <button class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+
+@* create madal *@
+@if (showCreateModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Committee</h5>
+                    <button class="btn-close" @onclick="CloseCreateModal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- Committee Name -->
+                    <div class="mb-3">
+                        <label class="form-label">Committee Name</label>
+                        <input class="form-control"
+                               @bind="newCommittee.FriendlyName" />
+                    </div>
+
+                    <!-- Type -->
+                    <div class="mb-3">
+                        <label class="form-label">Committee Type</label>
+                        <select class="form-select" @bind="newCommittee.Type">
+                            @foreach (var type in Enum.GetValues<CommitteeType>())
+                            {
+                                <option value="@type">@GetCommitteeTypeLabel(type)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Chairman -->
+                    <div class="mb-3">
+                        <label class="form-label">Chairman Email</label>
+                        <input class="form-control"
+                               @bind="newCommittee.ChairmanEmail" />
+                    </div>
+
+                    <!-- Members -->
+                    <div class="mb-3">
+                        <label class="form-label">Members (comma separated)</label>
+                        <textarea class="form-control"
+                                  @bind="membersInput"></textarea>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseCreateModal">Cancel</button>
+                    <button class="btn btn-warning text-white"
+                            @onclick="CreateCommittee"
+                            disabled="@isCreating">
+                        @(isCreating ? "Creating..." : "Create")
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
 
 <style>
     .committee-card {
@@ -94,77 +245,558 @@
         .committee-list li {
             margin-bottom: 6px;
         }
+
+    .committee-card {
+        border-radius: 14px;
+        border: 1px solid #eee;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        transition: all 0.2s ease;
+    }
+
+        .committee-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        }
+
+    /* Icon circle */
+    .committee-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background-color: #fdf6e3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #c7922f;
+        font-size: 18px;
+    }
+
+    /* Members button */
+    .members-btn {
+        background-color: #f8f9fa;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.85rem;
+        border: 1px solid #e0e0e0;
+    }
+
+        .members-btn:hover {
+            background-color: #c7922f;
+            color: white;
+            border-color: #c7922f;
+        }
+
+    .modal-content {
+        border-radius: 12px;
+    }
+
+    .modal-header {
+        border-bottom: 1px solid #eee;
+    }
+
+    .modal-footer {
+        border-top: 1px solid #eee;
+    }
 </style>
+
+@* //delete mada *@
+@if (committeeToDelete != null)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Delete Committee</h5>
+                    <button class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p>
+                        Are you sure you want to delete
+                        <b>@committeeToDelete.Title</b>?
+                    </p>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteCommittee">Delete</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@* application madal *@
+@if (showApplicationsModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @selectedCommitteeForApplications?.Title Applications
+                    </h5>
+                    <button class="btn-close" @onclick="CloseApplications"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    @if (isLoadingApplications)
+                    {
+                        <p>Loading...</p>
+                    }
+                    else if (!applications.Any())
+                    {
+                        <p class="text-muted">No applications found.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    @* <th>Name</th> *@
+                                    <th>Email</th>
+                                    <th>Date</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var app in applications)
+                                {
+                                    <tr>
+                                        @* <td>@app.FullName</td> *@
+                                        <td>@app.ApplicantEmail</td>
+                                        <td>@app.CreatedAt.ToShortDateString()</td>
+                                        <td class="text-end">
+
+                                            <button class="btn btn-sm btn-success me-2"
+                                                    @onclick="() => UpdateStatus(app, true)">
+                                                Approve
+                                            </button>
+
+                                            <button class="btn btn-sm btn-danger"
+                                                    @onclick="() => UpdateStatus(app, false)">
+                                                Reject
+                                            </button>
+
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseApplications">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
 
 @code {
 
+    private List<Committee> committees = new();
+    private Committee? selectedCommittee;
+    private bool showCreateModal = false;
+    private bool isCreating = false;
+
+    private CreateCommitteeDto newCommittee = new();
+    private string membersInput = "";
+    private string newMemberEmail = "";
+
+    private bool showApplicationsModal = false;
+    private List<CommitteeApplicationDto> applications = new();
+    private Committee? selectedCommitteeForApplications;
+    private bool isLoadingApplications = false;
     //page protection
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (!AuthState.IsLoggedIn)
         {
             Navigation.NavigateTo("/", true);
+            return;
+        }
+
+        await LoadCommittees();
+    }
+
+    private async Task LoadCommittees()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<CommitteeDto>>>(
+                "api/GetCommittees"
+            );
+
+            if (response?.IsSuccess == true && response.Data != null)
+            {
+                committees = response.Data.Select(c => new Committee
+                {
+                    Title = c.FriendlyName ?? "Unnamed Committee",
+                    Chair = c.ChairmanEmail ?? "N/A",
+                    Vice = "-", // not provided in API
+                    Items = c.MemberEmails ?? new List<string>(),
+                    Type = c.Type
+                }).ToList();
+            }
+            else
+            {
+                Console.WriteLine(response?.ErrorMessage ?? "Unknown error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading committees: {ex.Message}");
         }
     }
 
-    private List<Committee> committees = new()
+    //load applications
+    private async Task OpenApplications(Committee committee)
     {
-        new Committee
+        selectedCommitteeForApplications = committee;
+        showApplicationsModal = true;
+
+        await LoadApplications(committee.Type);
+    }
+
+    private async Task LoadApplications(CommitteeType type)
+    {
+        try
         {
-            Title = "Surgical Training & Education",
-            Chair = "Dr. David Karuri MBS",
-            Vice = "Dr. Amina Rashid",
-            Items = new()
+            isLoadingApplications = true;
+
+            // attach token if needed
+            // Http.DefaultRequestHeaders.Authorization =
+            //     new AuthenticationHeaderValue("Bearer", AuthState.Token);
+
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<CommitteeApplicationDto>>>(
+                $"api/GetCommitteeApplications?type={type}"
+            );
+
+            if (response?.IsSuccess == true)
             {
-                "Addressing educational needs of practicing surgeons in academic and community-based settings",
-                "Designing and implementing innovative educational programs at different career stages",
-                "Supporting surgeons in fulfilling maintenance of certification requirements",
-                "Monitoring regional chapters on continuous professional development"
-            }
-        },
-        new Committee
-        {
-            Title = "CME Committee",
-            Chair = "Dr. Peter Kamau",
-            Vice = "Dr. Lucy Akinyi",
-            Items = new()
-            {
-                "Organizing continuous medical education programs nationally",
-                "Accreditation of CME activities for members",
-                "Coordinating with international bodies for training standards"
-            }
-        },
-        new Committee
-        {
-            Title = "Trauma Research",
-            Chair = "Dr. Hassan Ali",
-            Vice = "Dr. Faith Wanjiku",
-            Items = new()
-            {
-                "Coordinating trauma surgery research across Kenya",
-                "Publishing findings in peer-reviewed journals",
-                "Advocating for improved trauma care infrastructure"
-            }
-        },
-        new Committee
-        {
-            Title = "Ethics & Professional Standards",
-            Chair = "Dr. James Mwangi",
-            Vice = "Dr. Grace Muthoni",
-            Items = new()
-            {
-                "Upholding ethical standards in surgical practice",
-                "Reviewing complaints and disciplinary matters",
-                "Developing guidelines for professional conduct"
+                applications = response.Data ?? new();
             }
         }
-    };
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading applications: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingApplications = false;
+        }
+    }
 
+    //update status
+    private async Task UpdateStatus(CommitteeApplicationDto app, bool isApproved)
+    {
+        try
+        {
+            var payload = new UpdateApplicationDto
+            {
+                Id = app.Id,
+                Type = selectedCommitteeForApplications!.Type.ToString(), // ✅ CRITICAL FIX
+                IsApproved = isApproved
+            };
+
+            var response = await Http.PostAsJsonAsync(
+                "api/UpdateCommitteeApplicationStatus",
+                payload
+            );
+
+            if (response.IsSuccessStatusCode)
+            {
+                // remove from UI instantly 🔥
+                applications.Remove(app);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Update failed: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating application: {ex.Message}");
+        }
+    }
+
+    //create
+    private async Task CreateCommittee()
+    {
+        try
+        {
+            isCreating = true;
+
+            newCommittee.MemberEmails = membersInput
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .ToList();
+
+            // attach token if needed
+            // Http.DefaultRequestHeaders.Authorization =
+            //     new AuthenticationHeaderValue("Bearer", AuthState.Token);
+
+            var response = await Http.PostAsJsonAsync(
+                "api/CreateCommittee",
+                newCommittee
+            );
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Add instantly to UI 🔥
+                committees.Add(new Committee
+                {
+                    Title = newCommittee.FriendlyName,
+                    Chair = newCommittee.ChairmanEmail,
+                    Vice = "-",
+                    Items = newCommittee.MemberEmails ?? new List<string>(),
+                    Type = newCommittee.Type
+                });
+
+                CloseCreateModal();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Create failed: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating committee: {ex.Message}");
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    //add a member
+    private async Task AddMember(string email, CommitteeType type)
+    {
+        try
+        {
+            var payload = new
+            {
+                Type = type.ToString(),   // ⚠️ must be string ("CME")
+                MemberEmail = email
+            };
+
+            // Attach token if required
+            Http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthState.Token);
+
+            var response = await Http.PostAsJsonAsync(
+                "api/AddCommitteeMember",
+                payload
+            );
+
+            if (response.IsSuccessStatusCode)
+            {
+                // 🔥 update UI instantly
+                var committee = committees.FirstOrDefault(c => c.Type == type);
+                if (committee != null)
+                {
+                    committee.Items.Add(email);
+                }
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Add member failed: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding member: {ex.Message}");
+        }
+    }
+
+    
+
+    private async Task AddMemberToSelected()
+    {
+        if (selectedCommittee == null || string.IsNullOrWhiteSpace(newMemberEmail))
+            return;
+
+        await AddMember(newMemberEmail, selectedCommittee.Type);
+
+        newMemberEmail = "";
+    }
+    //delete function
+    private async Task DeleteCommittee()
+    {
+        if (committeeToDelete == null) return;
+
+        try
+        {
+            // Attach token if needed
+            // Http.DefaultRequestHeaders.Authorization =
+            //     new AuthenticationHeaderValue("Bearer", AuthState.Token);
+
+            var type = committeeToDelete.Type.ToString(); // e.g. "CME"
+
+            var response = await Http.DeleteAsync(
+                $"api/DeleteCommittee?type={type}"
+            );
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Remove from UI immediately (no reload needed 🔥)
+                committees.Remove(committeeToDelete);
+                committeeToDelete = null;
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Delete failed: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting committee: {ex.Message}");
+        }
+    }
+    
+    // modal openning and closing
+    private void ShowMembers(Committee committee)
+    {
+        selectedCommittee = committee;
+    }
+
+    private void CloseModal()
+    {
+        selectedCommittee = null;
+    }
+
+    private Committee? committeeToDelete;
+
+    private void ConfirmDelete(Committee committee)
+    {
+        committeeToDelete = committee;
+    }
+
+    private void CancelDelete()
+    {
+        committeeToDelete = null;
+    }
+
+    private void OpenCreateModal()
+    {
+        newCommittee = new CreateCommitteeDto();
+        membersInput = "";
+        showCreateModal = true;
+    }
+
+    private void CloseCreateModal()
+    {
+        showCreateModal = false;
+    }
+
+    private void CloseApplications()
+    {
+        showApplicationsModal = false;
+        applications.Clear();
+    }
+    //type enum
+    public enum CommitteeType
+    {
+        CME,
+        Welfare,
+        TrainingEduction,
+        SurgicalOutcomes,
+        SurgicalOncology,
+        SurgicalCamp,
+        ScientificResearch,
+        GlobalSurgery
+    }
+
+    private string GetCommitteeTypeLabel(CommitteeType type)
+    {
+        return type switch
+        {
+            CommitteeType.CME => "CME Committee",
+            CommitteeType.Welfare => "Welfare Committee",
+            CommitteeType.TrainingEduction => "Training & Education",
+            CommitteeType.SurgicalOutcomes => "Surgical Outcomes",
+            CommitteeType.SurgicalOncology => "Surgical Oncology",
+            CommitteeType.SurgicalCamp => "Surgical Camp",
+            CommitteeType.ScientificResearch => "Scientific Research",
+            CommitteeType.GlobalSurgery => "Global Surgery",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetCommitteeIcon(CommitteeType type)
+    {
+        return type switch
+        {
+            CommitteeType.CME => "bi bi-journal-medical",
+            CommitteeType.Welfare => "bi bi-heart",
+            CommitteeType.TrainingEduction => "bi bi-mortarboard",
+            CommitteeType.SurgicalOutcomes => "bi bi-graph-up",
+            CommitteeType.SurgicalOncology => "bi bi-bandaid",
+            CommitteeType.SurgicalCamp => "bi bi-hospital",
+            CommitteeType.ScientificResearch => "bi bi-lightbulb",
+            CommitteeType.GlobalSurgery => "bi bi-globe",
+            _ => "bi bi-folder"
+        };
+    }
+
+
+   
+    // models
     private class Committee
     {
         public string Title { get; set; }
         public string Chair { get; set; }
         public string Vice { get; set; }
         public List<string> Items { get; set; }
+        public CommitteeType Type { get; set; } 
+
+    }
+    private class CommitteeDto
+    {
+        public string Id { get; set; }
+        public CommitteeType Type { get; set; }
+        public string FriendlyName { get; set; }
+        public string ChairmanEmail { get; set; }
+        public List<string> MemberEmails { get; set; }
+    }
+    private class ApiResponse<T>
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public T Data { get; set; }
+    }
+    private class CreateCommitteeDto
+    {
+        public CommitteeType Type { get; set; }
+        public string FriendlyName { get; set; }
+        public string ChairmanEmail { get; set; }
+        public List<string> MemberEmails { get; set; } = new();
+    }
+    private class CommitteeApplicationDto
+    {
+        public string Id { get; set; }
+        public string ApplicantEmail { get; set; }
+        public string FullName { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+   
+    private class UpdateApplicationDto
+    {
+        public string Id { get; set; }
+        public string Type { get; set; }   // ✅ change to string
+        public bool IsApproved { get; set; }
     }
 }

@@ -496,10 +496,7 @@ body {
     .committee-list li {
         margin-bottom: 6px;
         font-size: 0.9rem;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 3025f4a (election module done)
+
     }
 /*election modal
 */
@@ -717,3 +714,12 @@ body {
 }
 
 
+.input-validation-error {
+    border-color: red;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+/*=======================================*/

@@ -15,6 +15,11 @@
             IsLoggedIn = true;
         }
 
+        //public void SetToken(string token)
+        //{
+        //    Token = token;
+        //    IsLoggedIn = true;
+        //}
         public void Logout()
         {
             Token = null;

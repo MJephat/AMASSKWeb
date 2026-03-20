@@ -1,0 +1,500 @@
+﻿@page "/sponsor"
+@using System.Text.Json
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>Sponsors</PageTitle>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="fw-bold mb-0">
+            <i class="fa-solid fa-handshake me-2"></i> Sponsors
+        </h4>
+        <small class="text-muted">Manage sponsor records</small>
+    </div>
+
+    <button class="btn text-white" style="background-color:#CD7F32" @onclick="ShowAddModal">
+        <i class="fa-solid fa-plus me-2"></i> Add Sponsor
+    </button>
+</div>
+
+<!-- Card -->
+<div class="card shadow-sm p-3">
+
+    <!-- Search -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <input type="text"
+               class="form-control w-25"
+               placeholder="Search by company name..."
+               @bind="searchText"
+               @bind:event="oninput" 
+               />
+    </div>
+
+    <!-- Loading -->
+    @if (isLoading)
+    {
+        <div class="text-center mt-3">
+            <div class="spinner-border text-secondary"></div>
+            <p class="mt-2">Loading sponsor...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <!-- Error -->
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+    else if (sponsors == null)
+    {
+        <!-- Empty -->
+        <div class="text-center text-muted py-4">
+            No sponsor found.
+        </div>
+    }
+    else
+    {
+        <!-- Table -->
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Company</th>
+                        <th>Contact</th>
+                        <th>Phone</th>
+                        <th>Bank</th>
+                        <th>Account</th>
+                        <th>KRA Pin</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @if (sponsors != null && sponsors.Any())
+                    {
+                        @foreach (var sponsor in sponsors)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@sponsor.FriendlyName</strong><br />
+                                    <small class="text-muted">@sponsor.CompanyName</small>
+                                </td>
+
+                                <td>
+                                    @sponsor.ContactFullNames<br />
+                                    <small class="text-muted">@sponsor.ContactEmail</small>
+                                </td>
+
+                                <td>@sponsor.ContactPhoneNumber</td>
+                                <td>@sponsor.BankName</td>
+                                <td>@sponsor.BankAccount</td>
+
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-dark">
+                                        @sponsor.KraPin
+                                    </span>
+                                </td>
+
+                                <td class="text-end">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light dropdown-toggle"
+                                                data-bs-toggle="dropdown">
+                                            <i class="fa-solid fa-ellipsis"></i>
+                                        </button>
+
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item">
+                                                    <i class="fa-solid fa-eye me-2"></i> View
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" @onclick="() => ShowEditModal(sponsor)">
+                                                    <i class="fa-solid fa-pen me-2"></i> Edit
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" @onclick="() => DeleteSponsor(sponsor.CompanyName)">
+                                                    <i class="fa-solid fa-trash me-2"></i> Delete
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Add Sponsor Modal -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header text-white" style="background-color:#CD7F32">
+                    <h5 class="modal-title"><i class="fa-solid fa-handshake me-2"></i> Add Sponsor</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="HideAddModal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <EditForm Model="newSponsor" OnValidSubmit="HandleAddSponsor">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Company Name</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.CompanyName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Friendly Name</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.FriendlyName" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Contact First Name</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.ContactFirstName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Last Name</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.ContactLastName" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Email</label>
+                                <InputText type="email" class="form-control" @bind-Value="newSponsor.ContactEmail" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Phone Number</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.ContactPhoneNumber" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Bank Name</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.BankName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Bank Account</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.BankAccount" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Bank Code</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.BankCode" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">KRA Pin</label>
+                                <InputText class="form-control" @bind-Value="newSponsor.KraPin" />
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-flex justify-content-end">
+                            <button type="button" class="btn btn-secondary me-2" @onclick="HideAddModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Sponsor</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+
+@* edit modal *@
+@if (showEditModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header text-white" style="background-color:#CD7F32">
+                    <h5 class="modal-title"><i class="fa-solid fa-pen me-2"></i> Edit Sponsor</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="HideEditModal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <EditForm Model="editSponsor" OnValidSubmit="() => UpdateSponsor(editSponsor)">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Company Name</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.CompanyName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Friendly Name</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.FriendlyName" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Contact First Name</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.ContactFirstName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Last Name</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.ContactLastName" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Email</label>
+                                <InputText type="email" class="form-control" @bind-Value="editSponsor.ContactEmail" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Phone Number</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.ContactPhoneNumber" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Bank Name</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.BankName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Bank Account</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.BankAccount" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Bank Code</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.BankCode" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">KRA Pin</label>
+                                <InputText class="form-control" @bind-Value="editSponsor.KraPin" />
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-flex justify-content-end">
+                            <button type="button" class="btn btn-secondary me-2" @onclick="HideEditModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Update Sponsor</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    List<SponsorModel> sponsors = new();
+    string errorMessage = string.Empty;
+    bool isLoading = true;
+
+    CancellationTokenSource? cts;
+    string searchText = "";
+
+    private bool showModal = false;
+
+    private SponsorModel newSponsor = new SponsorModel();
+    private string _searchTerm = "";
+    List<SponsorModel> filteredSponsors = new(); // << Add this
+
+    private bool showEditModal = false;
+    private SponsorModel editSponsor = new SponsorModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSponsors();
+    }
+
+    private async Task LoadSponsors()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetAllSponsors");
+
+            if (response?.IsSuccess == true && response.Data != null)
+                sponsors = response.Data;
+            else
+                errorMessage = response?.ErrorMessage ?? "Failed to load sponsors.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Add sponsor
+    /// </summary>
+    private async Task HandleAddSponsor()
+    {
+        try
+        {
+            var url = "api/CreateSponsor"; // make sure this matches backend
+
+            // If using injected HttpClient with token:
+            var response = await Http.PostAsJsonAsync(url, newSponsor);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Sponsor added successfully");
+                // Optionally reload sponsors table
+                await LoadSponsors();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("Error adding sponsor: " + error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception: " + ex.Message);
+        }
+    }
+
+    private void ShowAddModal()
+    {
+        newSponsor = new SponsorModel(); // reset form
+        showModal = true;
+    }
+
+    private void HideAddModal()
+    {
+        showModal = false;
+    }
+
+    /// <summary>
+    /// delete
+    /// </summary>
+    private async Task DeleteSponsor(string companyName)
+    {
+        try
+        {
+            if (!await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete {companyName}?"))
+                return;
+
+            var response = await Http.DeleteAsync($"api/DeleteSponsor?companyName={Uri.EscapeDataString(companyName)}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var sponsorToRemove = sponsors.FirstOrDefault(s => s.CompanyName == companyName);
+                if (sponsorToRemove != null)
+                    sponsors.Remove(sponsorToRemove);
+
+                filteredSponsors = sponsors
+                    .Where(s => string.IsNullOrEmpty(_searchTerm) ||
+                                s.CompanyName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception deleting sponsor: " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// edit
+    /// </summary>
+    private async Task UpdateSponsor(SponsorModel sponsor)
+    {
+    try
+    {
+            // ✅ Ensure FullName is always set
+            sponsor.ContactFullNames =
+                $"{sponsor.ContactFirstName} {sponsor.ContactLastName}";
+        // Call your API (make sure route matches backend)
+            var url = "api/UpdateSponsor"; // adjust if needed
+
+    // Use injected HttpClient, automatically uses token if configured
+            var response = await Http.PostAsJsonAsync(url, sponsor);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("Sponsor updated successfully.");
+                showEditModal = false;
+            // Update the local list immediately
+            var existing = sponsors.FirstOrDefault(s => s.Id == sponsor.Id);
+            if (existing != null)
+            {
+                        int index = sponsors.IndexOf(existing);
+            sponsors[index] = sponsor;
+                    }
+
+            // Update filtered list if using live search
+            filteredSponsors = sponsors
+                .Where(s => string.IsNullOrEmpty(_searchTerm) ||
+                            s.CompanyName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            StateHasChanged();
+                    }
+                    else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("Error updating sponsor: " + error);
+            }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Exception updating sponsor: " + ex.Message);
+                }
+            }
+
+    private void ShowEditModal(SponsorModel sponsor)
+    {
+        editSponsor = new SponsorModel
+        {
+            Id = sponsor.Id,
+            CompanyName = sponsor.CompanyName,
+            FriendlyName = sponsor.FriendlyName,
+            ContactEmail = sponsor.ContactEmail,
+            ContactPhoneNumber = sponsor.ContactPhoneNumber,
+            ContactFirstName = sponsor.ContactFirstName,
+            ContactLastName = sponsor.ContactLastName,
+            BankCode = sponsor.BankCode,
+            BankName = sponsor.BankName,
+            BankAccount = sponsor.BankAccount,
+            KraPin = sponsor.KraPin
+        };
+        showEditModal = true;
+
+        StateHasChanged(); //ensure updated value is shown
+    }
+
+    private void HideEditModal()
+    {
+        showEditModal = false;
+    }
+
+    // Models
+    public class ApiResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+        public List<SponsorModel>? Data { get; set; } // ✅ LIST
+    }
+
+    public class SponsorModel
+    {
+        public string? Id { get; set; }
+        public string? CompanyName { get; set; }
+        public string? FriendlyName { get; set; }
+        public string? ContactEmail { get; set; }
+        public string? ContactPhoneNumber { get; set; }
+        public string? ContactFirstName { get; set; }
+        public string? ContactLastName { get; set; }
+        public string? BankCode { get; set; }
+        public string? BankName { get; set; }
+        public string? BankAccount { get; set; }
+        public string? KraPin { get; set; }
+        public string? ContactFullNames { get; set; }
+    }
+}

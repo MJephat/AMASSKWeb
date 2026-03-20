@@ -1,7 +1,8 @@
-﻿using System.Net.Http.Json;
-using static AMASSKWeb.Pages.Auth.Login;
+﻿using System.Data;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using static AMASSKWeb.Pages.Auth.Login;
 
 
 namespace AMASSKWeb.Repo
@@ -17,7 +18,7 @@ namespace AMASSKWeb.Repo
 
         public async Task<ReadRepoResult> Login(string email, string password)
         {
-            var loginUrl = "api/SSKAdminLogin?code=W359jEGwDqR_WYHlaWe9n-XV8xriTI8sRQ70GNQ7bkdhAzFu6kC1Dg==";
+            var loginUrl = "api/SSKAdminLogin";
 
             var loginData = new LoginDTO
             {
@@ -51,6 +52,7 @@ namespace AMASSKWeb.Repo
     }
 
 
+
     public class ReadRepoResult
     {
         public bool IsSuccess { get; set; }
@@ -65,7 +67,17 @@ namespace AMASSKWeb.Repo
         public string Id { get; set; }
         public string Email { get; set; }
         public string Name { get; set; }
-        public string Role { get; set; }
+        public int Role { get; set; } // ✅ fix
+
+
+        public string RoleName => Role switch
+        {
+            1 => "SuperAdmin",
+            2 => "CommitteeAdmin",
+            3 => "RegionAdmin",
+            _ => "Unknown"
+        };
+
     }
 
     public class LoginDTO
@@ -76,4 +88,6 @@ namespace AMASSKWeb.Repo
         [JsonPropertyName("password")]
         public string Password { get; set; }
     }
+   
+
 }

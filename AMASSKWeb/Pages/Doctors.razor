@@ -171,7 +171,7 @@ else
         {
             await LoadActiveElection();
 
-            var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetDoctors");
+            var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetFullMembers");
 
             if (response?.IsSuccess == true && response.Data != null)
                 doctors = response.Data;
@@ -265,7 +265,7 @@ else
 
         try
         {
-            var response = await Http.GetAsync($"api/GetDoctorProfile?email={Uri.EscapeDataString(doctorFromTable.Email)}");
+            var response = await Http.GetAsync($"api/GetMemberProfile?email={Uri.EscapeDataString(doctorFromTable.Email)}");
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {

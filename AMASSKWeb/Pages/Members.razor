@@ -1,6 +1,8 @@
 ﻿@page "/members"
 @inject AuthState AuthState
 @inject NavigationManager Navigation
+@inject HttpClient Http
+
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -9,9 +11,9 @@
             <small class="text-muted">Manage SSK membership records</small>
         </div>
 
-    <button class="btn text-white" style="background-color:#CD7F32">
+    @* <button class="btn text-white" style="background-color:#CD7F32">
             <i class="fa-solid fa-plus me-2"></i> Add Member
-        </button>
+        </button> *@
     </div>
 
     <!-- Card -->
@@ -19,11 +21,20 @@
 
         <!-- Search + Filter -->
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <input type="text" class="form-control w-25" placeholder="Search members..." />
+        <input type="text"
+               class="form-control w-25"
+               placeholder="Search by email..."
+               @bind="searchEmail"
+               @bind:event="oninput" />
 
-            <button class="btn btn-light border">
-                <i class="fa-solid fa-filter me-2"></i> Filter
-            </button>
+        <select class="form-select w-auto" @onchange="OnCategoryChanged">
+            <option value="">All Categories</option>
+
+            @foreach (var cat in Enum.GetValues<MemberCategory>())
+            {
+                <option value="@cat">@cat</option>
+            }
+        </select>
         </div>
 
         <!-- Table -->
@@ -32,42 +43,68 @@
                 <thead class="table-light">
                     <tr>
                         <th>Name</th>
-                        <th>Type</th>
-                        <th>Specialization</th>
-                        <th>Status</th>
-                        <th>Joined</th>
+                        <th>Category</th>
+                        <th>Region</th>
+                        <th>Facility</th>
+                        <th>Points</th>
                         <th></th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    @foreach (var member in washirika)
+                @foreach (var member in FilteredDoctors)
                     {
                         <tr>
                             <td>
-                                <strong>@member.Name</strong><br />
+                            <strong>@member.fullNames</strong><br />
                                 <small class="text-muted">@member.Email</small>
                             </td>
 
                             <td>
-                                <span class="badge bg-secondary-subtle text-dark">
-                                    @member.Type
-                                </span>
+                            <span class="@GetStatusClass(member.CategoryEnum)"
+                                  style="border-radius:50%">
+                                @member.CategoryEnum
+                            </span>
                             </td>
+                        <td>@member.region</td>
+                        <td>@member.facility</td>
 
-                            <td>@member.Specialization</td>
 
-                            <td>
-                                <span class="@GetStatusClass(member.Status)"  style="border-radius:50%">
-                                    @member.Status
-                                </span>
-                            </td>
+                        <td>
+                            <span class="badge bg-secondary-subtle text-dark">
+                                @member.icpdPoints
+                            </span>
+                        </td>
 
-                            <td>@member.Joined.ToString("yyyy-MM-dd")</td>
+                        <td class="text-end">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light dropdown-toggle"
+                                        type="button"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false">
+                                    <i class="fa-solid fa-ellipsis"></i>
+                                </button>
 
-                            <td class="text-end">
-                                <i class="fa-solid fa-ellipsis"></i>
-                            </td>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" @onclick="() => OpenProfile(member)">
+                                            <i class="fa-solid fa-eye me-2"></i> View
+                                            </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" @onclick="() => ShowEditCategoryModal(member)">
+                                            <i class="fa-solid fa-pen me-2"></i> Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item text-danger">
+                                            <i class="fa-solid fa-trash me-2"></i> Delete
+                                            </a>
+                                    </li>
+                                    @* You can add more actions here later *@
+                                </ul>
+                            </div>
+                        </td>
                         </tr>
                     }
                 </tbody>
@@ -75,48 +112,549 @@
         </div>
     </div>
 
-@code {
+  @* modal   *@
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
 
+                <!-- Header -->
+                <div class="modal-header">
+                    <h5 class="modal-title">Member Profile</h5>
+                    <button class="btn-close" @onclick="CloseModal"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body">
+
+                    @if (selectedDoctor == null && !profileNotFound)
+                    {
+                        <p class="text-muted">Loading profile...</p>
+                    }
+                    else if (profileNotFound)
+                    {
+                        <p class="text-danger">No profile found.</p>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                <img src="@photoUrl"
+                                     class="img-fluid rounded-circle shadow-sm"
+                                     style="width:150px;height:150px;object-fit:cover;" />
+
+                                <h6 class="mt-2">
+                                    @selectedDoctor.FirstName @selectedDoctor.LastName
+                                </h6>
+                            </div>
+
+                            <div class="col-md-8">
+                                <p><strong>Email:</strong> @selectedDoctor.Email</p>
+                                <p><strong>Specialty:</strong> @selectedDoctor.Specialty</p>
+                                <p><strong>Phone:</strong> @selectedDoctor.PhoneNumber</p>
+                                <p><strong>Region:</strong> @selectedDoctor.Region</p>
+
+                                <hr />
+
+                                <h6>Facilities</h6>
+                                @if (selectedDoctor.Facilities?.Any() == true)
+                                {
+                                    <ul>
+                                        @foreach (var facility in selectedDoctor.Facilities)
+                                        {
+                                            <li>@facility</li>
+                                        }
+                                    </ul>
+                                }
+
+                                <h6 class="mt-3">Documents</h6>
+                                @if (qualificationPdfUrls.Any())
+                                {
+                                    <ul>
+                                        @foreach (var pdf in qualificationPdfUrls)
+                                        {
+                                            <li>
+                                                <a href="@pdf" target="_blank">View Document</a>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <p class="text-muted">No documents</p>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+
+@* edit *@
+@if (editingMember != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Category for @editingMember.Email</h5>
+                    <button type="button" class="btn-close" @onclick="CloseEditCategoryModal"></button>
+                </div>
+                <div class="modal-body">
+                    <label>Select Category:</label>
+                    <select class="form-select" @bind="selectedCategoryForEdit">
+                        @foreach (var cat in Enum.GetValues<MemberCategory>())
+                        {
+                            <option value="@cat">@cat</option>
+                        }
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseEditCategoryModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveCategoryEdit">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Doctor> doctors = new();
+    private DoctorProfile? selectedDoctor;
+    private Doctor? selectedDoctorFromTable; // holds registration number
+    private bool isLoading = true;
+    private string? errorMessage;
+    private bool profileNotFound;
+
+    private List<string> qualificationBlobNames = new();
+    private List<string> qualificationPdfUrls = new();
+    private string photoUrl = "/images/default-doctor.png";
+
+    private string? currentElectionIdentifier;
+
+    private MemberCategory? selectedCategory = null;
+    private string _searchEmail = "";
+    private bool isSearching = false;
+    private CancellationTokenSource? cts;
+
+    private Doctor? editingMember;
+    private MemberCategory selectedCategoryForEdit;
+
+    // private string? updatingMemberId;
 
     //page protection
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        if (!AuthState.IsLoggedIn)
+        try
         {
-            Navigation.NavigateTo("/", true);
+            // await LoadActiveElection();
+
+            var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetMembers");
+
+            if (response?.IsSuccess == true && response.Data != null)
+                doctors = response.Data;
+            else
+                errorMessage = response?.ErrorMessage ?? "Failed to load doctors.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
-    public class Member
+    
+    private async Task LoadProfile(Doctor doctorFromTable)
     {
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Type { get; set; }
-        public string Specialization { get; set; }
-        public string Status { get; set; }
-        public DateTime Joined { get; set; }
+        selectedDoctorFromTable = doctorFromTable;
+        profileNotFound = false;
+        selectedDoctor = null;
+        qualificationBlobNames.Clear();
+        qualificationPdfUrls.Clear();
+        photoUrl = "/images/default-doctor.png";
+
+        try
+        {
+            var response = await Http.GetAsync($"api/GetMemberProfile?email={Uri.EscapeDataString(doctorFromTable.Email)}");
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                profileNotFound = true;
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+            var profile = await response.Content.ReadFromJsonAsync<ProfileResponse>();
+
+            if (profile?.IsSuccess == true && profile.Data != null)
+            {
+                selectedDoctor = profile.Data;
+                photoUrl = await GetPhotoUrlAsync(selectedDoctor);
+
+                // Pass registration number from table model
+                await LoadQualificationDocuments(doctorFromTable.RegistrationNumber);
+            }
+            else
+            {
+                profileNotFound = true;
+            }
+        }
+        catch
+        {
+            profileNotFound = true;
+        }
     }
 
-    List<Member> washirika = new()
+    private async Task<string> GetPhotoUrlAsync(DoctorProfile doctor)
     {
-        new() { Name="Dr. James Mwangi", Email="james@hospital.co.ke", Type="Fellow", Specialization="Laparoscopic Surgery", Status="Active", Joined=new DateTime(2019,3,15)},
-        new() { Name="Dr. Amina Osman", Email="amina@aku.edu", Type="Full Member", Specialization="General Surgery", Status="Active", Joined=new DateTime(2020,7,22)},
-        new() { Name="Dr. Peter Kamau", Email="peter@moi.ac.ke", Type="Full Member", Specialization="Cardiothoracic Surgery", Status="Active", Joined=new DateTime(2018,11,1)},
-        new() { Name="Dr. Faith Wanjiku", Email="faith@knh.or.ke", Type="Associate", Specialization="Pediatric Surgery", Status="Pending", Joined=new DateTime(2025,1,10)},
-        new() { Name="Dr. Hassan Ali", Email="hassan@coast.co.ke", Type="Full Member", Specialization="Trauma Surgery", Status="Active", Joined=new DateTime(2021,5,18)},
-        new() { Name="Dr. Lucy Akinyi", Email="lucy@uon.ac.ke", Type="Associate", Specialization="Orthopedic Surgery", Status="Inactive", Joined=new DateTime(2022,9,30)},
-        new() { Name="Dr. David Kiplagat", Email="david@mtrh.go.ke", Type="Fellow", Specialization="Neurosurgery", Status="Active", Joined=new DateTime(2017,2,14)},
-        new() { Name="Dr. Yvonne Kyalo", Email="yvonne@nbi-hosp.co.ke", Type="Full Member", Specialization="Breast Surgery", Status="Active", Joined=new DateTime(2023,4,5)},
-    };
+        if (string.IsNullOrWhiteSpace(doctor.PhotoBlobName) || string.IsNullOrWhiteSpace(doctor.PhotoBlobContainer))
+            return "/images/default-doctor.png";
 
-    string GetStatusClass(string status)
-    {
-        return status switch
+        try
         {
-            "Active" => "badge badge-active",
-            "Pending" => "badge bg-light text-dark border",
-            "Inactive" => "badge bg-secondary",
+            var url = $"api/GetImageByBlobName?containerName=doctor-profile-photos&blobName={Uri.EscapeDataString(doctor.PhotoBlobName)}";
+            var response = await Http.GetFromJsonAsync<BlobImageResponse>(url);
+            if (response?.IsSuccess == true && !string.IsNullOrEmpty(response.Data))
+                return response.Data;
+        }
+        catch { }
+
+        return "/images/default-doctor.png";
+    }
+
+    private async Task LoadQualificationDocuments(string registrationNumber)
+    {
+        if (selectedDoctor == null || string.IsNullOrWhiteSpace(registrationNumber))
+            return;
+
+        try
+        {
+            var url = $"api/GetDoctorQualificationDocuments?email={Uri.EscapeDataString(selectedDoctor.Email)}&registrationNumber={Uri.EscapeDataString(registrationNumber)}";
+
+            var response = await Http.GetFromJsonAsync<BlobListResponse>(url);
+
+            if (response?.IsSuccess == true && response.Data != null)
+            {
+                qualificationBlobNames = response.Data;
+                await LoadPdfUrls();
+            }
+            else
+            {
+                Console.WriteLine("Error loading documents: " + response?.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception loading qualification documents: " + ex.Message);
+        }
+    }
+
+
+
+    private async Task LoadPdfUrls()
+    {
+        qualificationPdfUrls.Clear();
+        foreach (var blob in qualificationBlobNames)
+        {
+            try
+            {
+                var url = $"api/GetPDFByBlobName?containerName=sskdoctorqualifications&blobName={Uri.EscapeDataString(blob)}";
+                var response = await Http.GetFromJsonAsync<PdfResponse>(url);
+                if (response?.IsSuccess == true && !string.IsNullOrWhiteSpace(response.Data))
+                    qualificationPdfUrls.Add(response.Data);
+                else
+                    Console.WriteLine("Failed to get PDF URL for blob: " + blob);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception getting PDF URL for blob: " + blob + " - " + ex.Message);
+            }
+        }
+    }
+
+    //category/types
+
+    public enum MemberCategory
+    {
+        FullMember,
+        Honorary,
+        Associate,
+        SSF,
+        Affiliate,
+        Fellow
+    }
+
+    string GetStatusClass(MemberCategory category)
+    {
+        return category switch
+        {
+            MemberCategory.FullMember => "badge bg-success",          // green
+            MemberCategory.Honorary => "badge bg-warning text-dark",  // gold/yellow
+            MemberCategory.Associate => "badge bg-info text-dark",    // light blue
+            MemberCategory.SSF => "badge bg-primary",                 // blue
+            MemberCategory.Affiliate => "badge bg-dark",              // dark/neutral
+            MemberCategory.Fellow => "badge bg-secondary",            // grey
             _ => "badge bg-secondary"
         };
     }
+
+
+    private string searchEmail
+    {
+        get => _searchEmail;
+        set
+        {
+            _searchEmail = value;
+            _ = HandleSearch(); // fire and forget
+        }
+    }
+    //filter
+    private IEnumerable<Doctor> FilteredDoctors =>
+     doctors.Where(d =>
+         // Category filter
+         (selectedCategory == null || d.CategoryEnum == selectedCategory)
+
+         // Email search filter
+         && (string.IsNullOrWhiteSpace(searchEmail)
+             || d.Email.Contains(searchEmail, StringComparison.OrdinalIgnoreCase))
+     );
+
+   //handle search
+    private async Task HandleSearch()
+    {
+        cts?.Cancel();
+        cts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(400, cts.Token); // debounce
+
+            // If empty → reload all members
+            if (string.IsNullOrWhiteSpace(searchEmail))
+            {
+                await LoadAllMembers();
+                return;
+            }
+
+            // If NOT a full email → use local filter only
+            if (!searchEmail.Contains("@"))
+            {
+                return; // UI will filter automatically
+            }
+
+            // Call API ONLY for full email
+            var url = $"api/GetMemberByEmail?email={Uri.EscapeDataString(searchEmail)}";
+
+            var response = await Http.GetFromJsonAsync<SingleMemberResponse>(url);
+
+            if (response?.IsSuccess == true && response.Data != null)
+            {
+                doctors = new List<Doctor> { response.Data };
+            }
+            else
+            {
+                doctors = new List<Doctor>();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // user still typing → ignore
+        }
+        catch
+        {
+            doctors = new List<Doctor>(); // ignore 404
+        }
+    }
+
+    //full reload
+    private async Task LoadAllMembers()
+    {
+        var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetMembers");
+
+        if (response?.IsSuccess == true && response.Data != null)
+            doctors = response.Data;
+    }
+
+    //handle selection
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+
+        if (string.IsNullOrEmpty(value))
+        {
+            selectedCategory = null;
+        }
+        else if (Enum.TryParse<MemberCategory>(value, out var parsed))
+        {
+            selectedCategory = parsed;
+        }
+    }
+    private bool showModal = false;
+
+    private async Task OpenProfile(Doctor member)
+    {
+        showModal = true;
+        await LoadProfile(member);
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    //update method
+    private void ShowEditCategoryModal(Doctor member)
+    {
+        editingMember = member;
+        selectedCategoryForEdit = member.CategoryEnum;
+    }
+
+    private void CloseEditCategoryModal()
+    {
+        editingMember = null;
+    }
+
+    private async Task SaveCategoryEdit()
+    {
+        if (editingMember == null) return;
+
+        var oldCategory = editingMember.CategoryEnum;
+
+        // Optimistic UI
+        editingMember.category = (int)selectedCategoryForEdit;
+
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/UpdateMemberCategory");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthState.Token);
+
+            var body = new
+            {
+                id = editingMember.Id,
+                email = editingMember.Email,
+                Category = selectedCategoryForEdit.ToString()
+            };
+
+            request.Content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(body),
+                System.Text.Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await Http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception("Update failed");
+            }
+        }
+        catch
+        {
+            // rollback if failed
+            editingMember.category = (int)oldCategory;
+            await LoadAllMembers();
+        }
+        finally
+        {
+            CloseEditCategoryModal();
+        }
+    }
+
+    // ===== Models =====
+    public class Doctor
+    {
+        public string Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string RegistrationNumber { get; set; }
+        public string Email { get; set; }
+        public string Location { get; set; }
+        public string region { get; set; }
+        public string facility { get; set; }
+        public int icpdPoints { get; set; }
+        public string fullNames { get; set; }
+        public int category { get; set; }
+        public MemberCategory CategoryEnum => (MemberCategory)category;
+    }
+    public class SingleMemberResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+        public Doctor? Data { get; set; }
+    }
+    public class ApiResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+        public List<Doctor>? Data { get; set; }
+    }
+    public class DoctorProfile
+    {
+        public string Id { get; set; }
+        public string Email { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Specialty { get; set; }
+        public string Details { get; set; }
+        public List<string>? Facilities { get; set; }
+        public string Region { get; set; }
+        public string PhotoBlobName { get; set; }
+        public string PhotoBlobContainer { get; set; }
+        public bool canVote { get; set; }
+    }
+    public class ProfileResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+        public DoctorProfile? Data { get; set; }
+    }
+    public class BlobImageResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+        public string? Data { get; set; }
+    }
+    public class BlobListResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public List<string> Data { get; set; }
+    }
+    public class PdfResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public string Data { get; set; }
+    }
+    public class ElectionApiResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public List<ElectionDto> Data { get; set; }
+    }
+
+    public class ElectionDto
+    {
+        public string? ElectionIdentifier { get; set; }
+    }
+    public class UpdateDoctorVotingStatusRequest
+    {
+        public string Id { get; set; }
+        public string Email { get; set; }
+        public bool CanVote { get; set; }
+    }
+
 }
