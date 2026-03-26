@@ -75,7 +75,7 @@
                         <span class="clickable"
                               data-bs-toggle="modal"
                               data-bs-target="#membersModal"
-                              @onclick="() => SetMembers(chapter.MemberEmails, chapter.Name)">
+                              @onclick="() => SetMembers( chapter.Name)">
                             <i class="bi bi-people"></i>
                             @chapter.Members members
                         </span>
@@ -94,7 +94,7 @@
 
 @* get members list *@
 <div class="modal fade" id="membersModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
 
             <div class="modal-header">
@@ -105,19 +105,37 @@
             <div class="modal-body">
                 @if (SelectedMembers != null && SelectedMembers.Any())
                 {
-                    <ul class="list-group">
-                        @foreach (var email in SelectedMembers)
-                        {
-                            <li class="list-group-item d-flex justify-content-between">
-                                <span>@email</span>
-                                <i class="bi bi-envelope"></i>
-                            </li>
-                        }
-                    </ul>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    @* <th>#</th> *@
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Reg</th>
+                                    <th>Phone</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var member in SelectedMembers.Select((value, index) => new { value, index }))
+                                {
+                                    <tr>
+                                        @* <td>@(member.index + 1)</td> *@
+                                        <td>
+                                            <small>@member.value.FullNames</small>
+                                        </td>
+                                        <td>@member.value.Email</td>
+                                        <td>@member.value.RegistrationNumber</td>
+                                        <td>@member.value.PhoneNumber</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
                 else
                 {
-                    <p>No members found.</p>
+                    <p class="text-muted">No members found.</p>
                 }
             </div>
 
@@ -185,7 +203,9 @@
     List<Chapter> ChapterList = new();
     bool isLoading = true;
 
-    List<string> SelectedMembers = new();
+    List<MemberDto> SelectedMembers = new();
+
+    // List<string> SelectedMembers = new();
     bool showMembersModal = false;
 
     //setting memnbers
@@ -205,11 +225,75 @@
       "WesternNyanza"
 };
 
-    void SetMembers(List<string> members, string chapterName)
+    // void SetMembers(List<string> members, string chapterName)
+    // {
+    //     SelectedMembers = members ?? new List<string>();
+    //     SelectedChapterName = chapterName;
+
+    // }
+
+    //get the count and names of members per chapter
+    async Task SetMembers(string chapterName)
     {
-        SelectedMembers = members ?? new List<string>();
         SelectedChapterName = chapterName;
 
+        try
+        {
+            var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"api/GetMembersByChapter?chapter={chapterName}"
+            );
+
+            request.Headers.Add("Authorization", $"Bearer {AuthState.Token}");
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<MemberDto>>>();
+
+                if (result?.IsSuccess == true)
+                {
+                    SelectedMembers = result.Data ?? new List<MemberDto>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    //count members helper
+    async Task<int> GetMemberCount(string chapterName)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"api/GetMembersByChapter?chapter={chapterName}"
+            );
+
+            request.Headers.Add("Authorization", $"Bearer {AuthState.Token}");
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<List<MemberDto>>>();
+
+                if (result?.IsSuccess == true)
+                {
+                    return result.Data?.Count ?? 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        return 0;
     }
 
     protected override async Task OnInitializedAsync()
@@ -226,18 +310,25 @@
 
             if (response?.IsSuccess == true)
             {
-                ChapterList = response.Data.Select(x => new Chapter
-                {
-                    Name = GetRegionName(x.GeoRegion),
-                    GeoRegion = GetRegionName(x.GeoRegion), // or raw value if backend expects int/string
-                    Admin = x.AdminEmail,
-                    Schedule = "TBD",
-                    Time = "TBD",
-                    NextDate = "TBD",
-                    Members = x.Members?.Count ?? 0,
-                    Status = "Active",
-                    MemberEmails = x.Members ?? new List<string>()
-                }).ToList();
+                var tasks = response.Data.Select(async x =>
+{
+    var chapterName = GetRegionName(x.GeoRegion);
+    var count = await GetMemberCount(chapterName);
+
+    return new Chapter
+                        {
+                            Name = chapterName,
+                            GeoRegion = chapterName,
+                            Admin = x.AdminEmail,
+                            Schedule = "TBD",
+                            Time = "TBD",
+                            NextDate = "TBD",
+                            Members = count,
+                            Status = "Active"
+                        };
+                    });
+
+                ChapterList = (await Task.WhenAll(tasks)).ToList();
             }
         }
         catch (Exception ex)
@@ -308,14 +399,14 @@
     {
         return region switch
         {
-           0 => "Coast",
-           1 => "Central",
-           2 => "Nairobi",
-           3 => "SouthRift",
-           4 => "NorthRift",
-           5 => "Northern",
-           6 => "Eastern",
-           7 => "WesternNyanza"
+            0 => "Coast",
+            1 => "Central",
+            2 => "Nairobi",
+            3 => "SouthRift",
+            4 => "NorthRift",
+            5 => "Northern",
+            6 => "Eastern",
+            7 => "WesternNyanza"
         };
     }
 
@@ -331,7 +422,7 @@
         };
     }
 
-   
+
 
     // UI Model (what your page actually uses)
     public class Chapter
@@ -369,5 +460,16 @@
         public string GeoRegion { get; set; }
         public string AdminEmail { get; set; }
         public List<string> Members { get; set; } = new();
+    }
+
+    public class MemberDto
+    {
+        public string Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string RegistrationNumber { get; set; }
+        public string Email { get; set; }
+        public string PhoneNumber { get; set; }
+        public string FullNames { get; set; }
     }
 }

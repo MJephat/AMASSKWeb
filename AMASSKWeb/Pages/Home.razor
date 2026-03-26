@@ -100,15 +100,25 @@
                 <h4 class="fw-bold mb-3">Recent Activity</h4>
 
                 <!-- ITEM -->
-                <div class="activity-item">
-                    <div class="activity-content"> 
-                        <strong>New member registered</strong><br />
-                        <small class="text-muted">Dr. Faith Wanjiku – Full Member</small>
+                @if (latestMember != null)
+                {
+                    <div class="activity-item">
+                        <div class="activity-content">
+                            <strong>New member registered</strong><br />
+                            <small class="text-muted">
+                                @(string.IsNullOrEmpty(latestMember.FullName)
+                                                            ? latestMember.Email
+                                                            : latestMember.FullName)
+                            – @latestMember.Category.ToString().Replace("Member", " Member")
+                        </small>
+                        </div>
+                        <div class="activity-time text-muted">
+                            @(latestMember.CreatedAt == default
+                                                    ? "Recently"
+                                                    : latestMember.CreatedAt.ToString("dd MMM yyyy"))
+                        </div>
                     </div>
-                    <div class="activity-time text-muted">
-                        2 hours ago
-                    </div>
-                </div>
+                }
                 <hr />
 
                 @foreach (var activity in recentEvent)
@@ -154,35 +164,15 @@
             <div class="card shadow-sm p-4">
                 <h5 class="fw-bold mb-3">Membership Breakdown</h5>
 
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Fellow</span>
-                    <strong>45</strong>
-                </div>
+                @foreach (var item in membershipBreakdown)
+                {
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">@item.Key</span>
+                        <strong>@item.Value</strong>
+                    </div>
+                }
 
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Full Member</span>
-                    <strong>620</strong>
-                </div>
-
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Associate</span>
-                    <strong>285</strong>
-                </div>
-
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Honorary</span>
-                    <strong>18</strong>
-                </div>
-
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Affiliate</span>
-                    <strong>180</strong>
-                </div>
-
-                <div class="d-flex justify-content-between">
-                    <span class="text-muted">SSF</span>
-                    <strong>100</strong>
-                </div>
+            
             </div>
         </div>
 
@@ -195,7 +185,10 @@
     private int activeElectionCount = 0;
     private int membersCount = 0; // to be implemented later
 
+    private List<MemberDto> allMembers = new();
+    private MemberDto? latestMember;
 
+    private Dictionary<string, int> membershipBreakdown = new();
 
     private List<Event> recentEvent = new();
 
@@ -235,15 +228,56 @@
         }
     }
     //count docs(member)
+    // private async Task LoadMembersCount()
+    // {
+    //     try
+    //     {
+    //         var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetMembers");
+
+    //         if (response != null && response.IsSuccess)
+    //         {
+    //             membersCount = response.Data?.Count ?? 0;
+    //         }
+    //         else
+    //         {
+    //             Console.WriteLine(response?.ErrorMessage);
+    //         }
+    //         BuildMembershipBreakdown();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Console.WriteLine(ex.Message);
+    //     }
+    // }
+
     private async Task LoadMembersCount()
     {
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiResponse>("api/GetMembers");
+            var response = await Http.GetFromJsonAsync<ApiResponseMembers>("api/GetMembers");
 
             if (response != null && response.IsSuccess)
             {
-                membersCount = response.Data?.Count ?? 0;
+             
+                // ✅ store all members
+                allMembers = response.Data ?? new();
+
+
+                // ✅ total count (your existing UI)
+                membersCount = allMembers.Count;
+
+                // ✅ 🔥 GROUP + COUNT BY CATEGORY
+                membershipBreakdown = allMembers
+           .GroupBy(m => m.Category.ToString())
+            .ToDictionary(
+                g => g.Key,
+                g => g.Count()
+            ); 
+               
+                latestMember = allMembers
+                .OrderByDescending(m => m.CreatedAt)
+                .FirstOrDefault();
+            
             }
             else
             {
@@ -255,6 +289,8 @@
             Console.WriteLine(ex.Message);
         }
     }
+
+ 
 
     // get active elections
     private async Task LoadUpcomingEventsCount()
@@ -288,6 +324,8 @@
         }
     }
 
+
+
     // get election in progress
     private async Task LoadActiveElectionCount()
     {
@@ -312,6 +350,17 @@
         }
     }
 
+
+    public enum MemberCategory
+    {
+        Fellow,
+        FullMember,
+        Associate,
+        Honorary,
+        Affiliate,
+        SSF
+    }
+
     public class Event
     {
         public string Id { get; set; }
@@ -325,5 +374,24 @@
         public bool IsSuccess { get; set; }
         public string? ErrorMessage { get; set; }
         public List<Event>? Data { get; set; }
+    }
+
+    private class MemberDto
+    {
+        public string Email { get; set; }
+        public string FullName { get; set; }
+        public MemberCategory Category { get; set; } // e.g. FullMember, Fellow
+        public DateTime CreatedAt { get; set; }
+    }
+    private class CategoryDto
+    {
+        public string Name { get; set; }
+    }
+
+    private class ApiResponseMembers
+    {
+        public bool IsSuccess { get; set; }
+        public string? ErrorMessage { get; set; }
+        public List<MemberDto>? Data { get; set; } // matches your API
     }
 }

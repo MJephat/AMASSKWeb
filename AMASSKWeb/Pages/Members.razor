@@ -44,7 +44,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Category</th>
-                        <th>Region</th>
+                        <th>Chapter</th>
                         <th>Facility</th>
                         <th>Points</th>
                         <th></th>
@@ -66,7 +66,7 @@
                                 @member.CategoryEnum
                             </span>
                             </td>
-                        <td>@member.region</td>
+                        <td>@member.chapter</td>
                         <td>@member.facility</td>
 
 
@@ -154,6 +154,7 @@
                                 <p><strong>Specialty:</strong> @selectedDoctor.Specialty</p>
                                 <p><strong>Phone:</strong> @selectedDoctor.PhoneNumber</p>
                                 <p><strong>Region:</strong> @selectedDoctor.Region</p>
+
 
                                 <hr />
 
@@ -276,7 +277,7 @@
         }
     }
 
-    
+
     private async Task LoadProfile(Doctor doctorFromTable)
     {
         selectedDoctorFromTable = doctorFromTable;
@@ -432,7 +433,7 @@
              || d.Email.Contains(searchEmail, StringComparison.OrdinalIgnoreCase))
      );
 
-   //handle search
+    //handle search
     private async Task HandleSearch()
     {
         cts?.Cancel();
@@ -582,6 +583,7 @@
         public string Email { get; set; }
         public string Location { get; set; }
         public string region { get; set; }
+        public string chapter { get; set; }
         public string facility { get; set; }
         public int icpdPoints { get; set; }
         public string fullNames { get; set; }
@@ -611,6 +613,7 @@
         public string Details { get; set; }
         public List<string>? Facilities { get; set; }
         public string Region { get; set; }
+        public string Chapter { get; set; }
         public string PhotoBlobName { get; set; }
         public string PhotoBlobContainer { get; set; }
         public bool canVote { get; set; }
