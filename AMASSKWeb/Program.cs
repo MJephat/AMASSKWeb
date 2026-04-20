@@ -20,7 +20,10 @@ builder.Services.AddScoped(sp =>
 
     return new HttpClient(handler)
     {
-        BaseAddress = new Uri("https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/")
+        //BaseAddress = new Uri("https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/")
+
+        //production
+        BaseAddress = new Uri("https://bdn-ama-ssk-backend-v1-agcybpc6drcgfrhq.southafricanorth-01.azurewebsites.net/")
     };
 });
 
