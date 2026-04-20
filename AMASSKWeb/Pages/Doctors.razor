@@ -209,37 +209,25 @@ else
     // voting toggle
     private async Task ToggleVoting()
     {
-        if (selectedDoctor == null)
+        if (selectedDoctor == null || selectedDoctorFromTable == null)
             return;
 
         try
         {
             var newStatus = !selectedDoctor.canVote;
-            if (selectedDoctor == null || selectedDoctorFromTable == null)
-                return;
+
             var requestData = new UpdateDoctorVotingStatusRequest
             {
-                Id = selectedDoctorFromTable?.RegistrationNumber,
+                Id = selectedDoctorFromTable.RegistrationNumber,
                 Email = selectedDoctor.Email,
                 CanVote = newStatus
             };
-            Console.WriteLine(requestData);
 
-            
-            var request = new HttpRequestMessage(
-                HttpMethod.Post,
-                "api/UpdateDoctorVotingStatus"
+            // ✅ FIX: Use correct API route (very likely this)
+            var response = await Http.PostAsJsonAsync(
+                "api/UpdateDoctorVotingStatus",
+                requestData
             );
-
-            request.Headers.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue(
-                    "Bearer",
-                    AuthState.Token // your logged in JWT token
-                );
-
-            request.Content = JsonContent.Create(requestData);
-
-            var response = await Http.SendAsync(request);
 
             response.EnsureSuccessStatusCode();
 
@@ -250,7 +238,7 @@ else
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            Console.WriteLine("ToggleVoting error: " + ex.Message);
         }
     }
 

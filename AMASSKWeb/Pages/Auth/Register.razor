@@ -53,9 +53,9 @@
                 <InputSelect class="form-control"
                              @bind-Value="RegisterModel.Role">
                     <option value="">-- Select Role --</option>
-                    <option value="SuperAdmin">SuperAdmin</option>
-                    <option value="FinanceAdmin">FinanceAdmin</option>
-                    <option value="HRAdmin">HRAdmin</option>
+                    <option value="CommitteeAdmin">CommitteeAdmin</option>
+                    <option value="RegionAdmin">RegionAdmin</option>
+                    @* <option value="HRAdmin">HRAdmin</option> *@
                 </InputSelect>
             </div>
 
@@ -87,7 +87,7 @@
 
             <div class="text-center mt-3">
                 <span class="text-muted">Already have an account?</span>
-                <a href="/login" class="ms-1 fw-semibold">Login</a>
+                <a href="/" class="ms-1 fw-semibold">Login</a>
             </div>
         </div>
     </EditForm>

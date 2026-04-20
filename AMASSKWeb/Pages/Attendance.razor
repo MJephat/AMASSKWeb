@@ -1,0 +1,134 @@
+﻿@page "/attendance"
+
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<h3>Event Registration</h3>
+
+@if (!string.IsNullOrWhiteSpace(EventId))
+{
+    <div class="alert alert-light">
+        Event ID Captured: <strong>@EventId</strong>
+    </div>
+
+    <EditForm Model="model" OnValidSubmit="Submit">
+
+        <InputText class="form-control mb-2"
+                   placeholder="Full Name"
+                   @bind-Value="model.FullName" />
+
+        <InputText class="form-control mb-2"
+                   placeholder="Email"
+                   @bind-Value="model.Email" />
+
+        <button class="btn btn-success">
+            Submit
+        </button>
+
+    </EditForm>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert alert-info mt-3">
+            @message
+        </div>
+    }
+}
+else
+{
+    <div class="alert alert-danger">
+        Invalid QR Code — EventId not found.
+    </div>
+}
+
+@code {
+
+    // Primary method (Blazor query binding)
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "eventId")]
+    public string EventId { get; set; }
+
+    string message;
+
+    AttendanceModel model = new();
+
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($"Query-bound EventId: {EventId}");
+
+        // Fallback if query binding fails
+        if (string.IsNullOrWhiteSpace(EventId))
+        {
+            TryGetEventIdFromUrl();
+        }
+
+        Console.WriteLine($"Final EventId: {EventId}");
+    }
+
+    void TryGetEventIdFromUrl()
+    {
+        try
+        {
+            var uri = new Uri(Nav.Uri);
+
+            // Example:
+            // ?eventId=abc123
+
+            var query = uri.Query;
+
+            if (!string.IsNullOrWhiteSpace(query)
+                && query.Contains("eventId="))
+            {
+                EventId = query
+                    .Split("eventId=")[1]
+                    .Split("&")[0];
+
+                Console.WriteLine(
+                    $"Fallback captured EventId: {EventId}"
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            
+               message= ex.ToString();
+        }
+    }
+
+    async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(EventId))
+        {
+            message = "Missing EventId. QR code may be invalid.";
+            return;
+        }
+
+        var payload = new
+        {
+            eventIdentifier = EventId,
+            email = model.Email,
+            fullName = model.FullName,
+            attendanceDateTime = DateTime.UtcNow
+        };
+
+        Console.WriteLine(
+            $"Submitting payload EventId = {EventId}"
+        );
+
+        var response =
+            await Http.PostAsJsonAsync(
+                "api/CreateAttendance",
+                payload
+            );
+
+        message = response.IsSuccessStatusCode
+            ? "Attendance recorded ✔"
+            : "Failed to submit";
+    }
+
+    class AttendanceModel
+    {
+        public string FullName { get; set; }
+        public string Email { get; set; }
+    }
+}

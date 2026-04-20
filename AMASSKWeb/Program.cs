@@ -23,5 +23,6 @@ builder.Services.AddScoped(sp =>
         BaseAddress = new Uri("https://aura-amassk-backend-fxcah5dkbpexc2gn.southafricanorth-01.azurewebsites.net/")
     };
 });
+
 builder.Services.AddScoped<IAdminRepo, AdminRepo>();
 await builder.Build().RunAsync();

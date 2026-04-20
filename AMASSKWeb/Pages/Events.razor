@@ -1,4 +1,5 @@
 ﻿@page "/events"
+@using System.Text
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject AuthState AuthState
@@ -67,6 +68,14 @@
                         <div class="text-muted small mb-2">
                             <i class="fa-solid fa-location-dot me-2"></i>
                             @item.Location
+                        </div>
+
+                        <div class="text-center mt-3">
+                            <img src="@GenerateQrCode(item.Id)" width="120" />
+
+                            <div class="small text-muted mt-1">
+                                Scan to register
+                            </div>
                         </div>
 
                         <div class="d-flex justify-content-between mt-3">
@@ -329,11 +338,10 @@
                         <thead>
 
                             <tr>
+                                <th>Name</th>
                                 <th>Email</th>
-                                <th>Paid</th>
+                                <th>Time</th>
                                 <th>Registered</th>
-                                <th>Cost Type</th>
-                                <th>Amount</th>
                             </tr>
 
                         </thead>
@@ -343,12 +351,11 @@
                             @foreach (var attendee in SelectedAttendees)
                             {
                                 <tr>
-
+                                    <td>@attendee.FullName</td>
                                     <td>@attendee.Email</td>
-                                    <td>@attendee.HasPaid</td>
+                                    <td>@attendee.AttendanceDateTime</td>
                                     <td>@attendee.IsRegistered</td>
-                                    <td>@attendee.SelectedCost?.Description</td>
-                                    <td>@attendee.SelectedCost?.Amount</td>
+                                    
 
                                 </tr>
                             }
@@ -375,6 +382,9 @@
     string EditingEventId = null;
     string errorMessage;
 
+  
+
+
     DateTime StartDateLocal = DateTime.Now;
     DateTime EndDateLocal = DateTime.Now.AddDays(1);
 
@@ -390,6 +400,12 @@
         CostSchedule = new List<CostScheduleDto>()
     };
 
+
+    void OpenCreateModal()
+    {
+        ResetForm();
+    }
+
     //page protection
     protected override void OnInitialized()
     {
@@ -397,7 +413,35 @@
         {
             Navigation.NavigateTo("/", true);
         }
+
     }
+
+    
+    /// <summary>
+    /// Generate a qr code
+    /// </summary>
+
+    private string GenerateQrCode(string eventId)
+    {
+        Console.WriteLine($"Generating QR for: {eventId}");
+       // var baseUrl = Navigation.BaseUri.TrimEnd('/');
+
+        var url = $"https://96a1-2c0f-2f00-58-c00-fce7-460b-cae1-7e2d.ngrok-free.app/attendance?eventId={eventId}"; ;
+
+        Console.WriteLine($"QR URL = {url}");
+
+        using var qrGenerator = new QRCodeGenerator();
+
+        var qrData = qrGenerator.CreateQrCode(
+            url,
+            QRCodeGenerator.ECCLevel.Q
+        );
+
+        var qrCode = new Base64QRCode(qrData);
+
+        return $"data:image/png;base64,{qrCode.GetGraphic(20)}";
+    }
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -556,24 +600,23 @@
 
     void ResetForm()
     {
-
         IsEditMode = false;
+        EditingEventId = null;
 
         NewEvent = new CreateEventRequest
         {
-            CostSchedule = new()
+            CostSchedule = new List<CostScheduleDto>()
         };
 
         StartDateLocal = DateTime.Now;
         EndDateLocal = DateTime.Now.AddDays(1);
-
     }
     ///attendes count
     async Task LoadAttendeeCount(string eventId)
     {
 
         var url =
-        $"api/GetEventAttendees?code=fE9kzjNdcN9UHNJmvi-xs-S2fdJ4MP0lwIjPJWlqgaEEAzFuP8MyZA==&eventIdentifier={eventId}";
+        $"api/GetAttendanceForEvent?eventId={eventId}";
 
 
         var result =
@@ -587,16 +630,19 @@
 // show attendees
     async Task ShowAttendees(string eventId, string name)
     {
-
         SelectedEventName = name;
-
         isLoadingAttendees = true;
 
-        SelectedAttendees = await Http.GetFromJsonAsync<List<EventAttendee>>
-                ($"api/GetEventAttendees?code=fE9kzjNdcN9UHNJmvi-xs-S2fdJ4MP0lwIjPJWlqgaEEAzFuP8MyZA==&eventIdentifier={eventId}");
+        var url =
+        $"api/GetAttendanceForEvent?&eventId={eventId}";
+
+        var result =
+        await Http.GetFromJsonAsync<AttendeeResponse>(url);
+
+        SelectedAttendees =
+        result?.Data ?? new List<EventAttendee>();
 
         isLoadingAttendees = false;
-
     }
 
     string GetTypeBadge(string type)
@@ -651,6 +697,8 @@
     {
         public bool IsSuccess { get; set; }
         public List<EventAttendee> Data { get; set; } = new();
+        public string ErrorMessage { get; set; }
+        public int Count { get; set; }
     }
 
     public class EventAttendee
@@ -659,6 +707,8 @@
         public bool HasPaid { get; set; }
         public bool IsRegistered { get; set; }
         public SelectedCost SelectedCost { get; set; }
+        public string FullName {get; set; }
+        public DateTimeOffset AttendanceDateTime { get; set; }
     }
 
     public class SelectedCost
@@ -666,5 +716,6 @@
         public string Description { get; set; }
         public decimal Amount { get; set; }
     }
+
 
 }

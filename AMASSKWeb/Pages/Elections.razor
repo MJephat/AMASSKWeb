@@ -428,6 +428,7 @@
                                     <tr>
                                         <th>Name</th>
                                         <th>Position</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -437,6 +438,12 @@
                                             @onclick="() => SelectCandidate(candidate)">
                                             <td>@candidate.CandidateFullName</td>
                                             <td>@candidate.PositionAimingFor?.Position</td>
+
+                                            <td>
+                                                <input type="checkbox"
+                                                       checked="@candidate.IsActive"
+                                                       @onchange="(e) => OnStatusChanged(candidate, e)" />
+                                            </td>
                                         </tr>
                                     }
                                 </tbody>
@@ -753,6 +760,51 @@
         }
 
         IsLoadingCandidates = false;
+    }
+    //update candidate status method
+    async Task UpdateCandidateStatus(
+    string electionId,
+    string candidateEmail,
+    bool isActive)
+    {
+        var url =
+        $"api/UpdateCandidateStatus?" +
+        $"electionIdentifier={electionId}" +
+        $"&candidateEmail={candidateEmail}" +
+        $"&isActive={isActive.ToString().ToLower()}" +
+        $"&id={candidateEmail}|{electionId}";
+
+        var response = await Http.PostAsync(url, null);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception("Failed to update candidate status");
+        }
+    }
+
+
+    async Task OnStatusChanged(CandidateDto candidate, ChangeEventArgs e)
+    {
+        bool isChecked = (bool)e.Value;
+
+        var previousState = candidate.IsActive;
+
+        // optimistic update
+        candidate.IsActive = isChecked;
+
+        try
+        {
+            await UpdateCandidateStatus(
+                candidate.ElectionIdentifier,   // 👈 dynamic
+                candidate.CandidateEmail,                // 👈 dynamic
+                isChecked
+            );
+        }
+        catch
+        {
+            // rollback if API fails
+            candidate.IsActive = previousState;
+        }
     }
 
     //real time counts
