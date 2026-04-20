@@ -426,7 +426,7 @@
         Console.WriteLine($"Generating QR for: {eventId}");
        // var baseUrl = Navigation.BaseUri.TrimEnd('/');
 
-        var url = $"api/attendance?eventId={eventId}"; ;
+        var url =$"https://sskadminportal.z1.web.core.windows.net/attendance?eventId={Uri.EscapeDataString(eventId)}";
 
         Console.WriteLine($"QR URL = {url}");
 
