@@ -1,159 +1,553 @@
 ﻿@page "/courses"
 @inject AuthState AuthState
 @inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+
 
 <div class="container-fluid py-4">
 
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="fw-bold mb-0">Courses </h4>
+            <h4 class="fw-bold mb-0">Courses</h4>
             <small class="text-muted">
-                Manage conferences, workshops, CME programs & courses
+                Manage CME programs & courses
             </small>
         </div>
 
-        <button class="btn text-white"
-                style="background-color:#CD7F32;">
+        <button class="btn text-white" 
+        style="background-color:#CD7F32;"
+                data-bs-toggle="modal"
+                data-bs-target="#waferModal">
             <i class="fa-solid fa-plus me-2"></i>
-            Create Cousrses
+            Create Course
         </button>
     </div>
 
-    <!-- Grid -->
-    <div class="row g-4">
-        @foreach (var item in EventList)
-        {
-            <div class="col-lg-4 col-md-6">
-                <div class="card shadow-sm p-3 event-card">
+    <!-- Specialty Filter -->
+    <div class="mb-4" style="max-width:300px;">
+        <label class="form-label fw-semibold">Filter by Specialty</label>
+        <select class="form-select" @onchange="OnSpecialtyChanged">
+            @foreach (var spec in Enum.GetValues<Specialty>())
+            {
+                <option value="@spec" selected="@(spec == SelectedSpecialty)">
+                    @spec
+                </option>
+            }
+        </select>
+    </div>
 
-                    <!-- Top Badges -->
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="@GetTypeBadge(item.Type)">
-                            @item.Type
-                        </span>
+    <!-- Loading -->
+    @if (isLoading)
+    {
+        <p>Loading courses...</p>
+    }
+    else if (cMEItems == null || !cMEItems.Any())
+    {
+        <p class="text-muted">No courses found.</p>
+    }
+    else
+    {
+        <!-- Grid -->
+        <div class="row g-4">
+            @foreach (var item in cMEItems)
+            {
+                <div class="col-lg-4 col-md-6">
+                    <div class="card shadow-sm p-3 event-card h-100">
 
-                        <span class="@GetStatusBadge(item.Status)">
-                            @item.Status
-                        </span>
-                    </div>
+                        <!-- Top Badges -->
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="badge bg-info">
+                                @((Specialty)item.Specialty)
+                            </span>
 
-                    <!-- Title -->
-                    <h6 class="fw-bold">@item.Title</h6>
-
-                    <!-- Date -->
-                    <div class="text-muted small mb-2">
-                        <i class="fa-regular fa-calendar me-2"></i>
-                        @item.Date
-                    </div>
-
-                    <!-- Location -->
-                    <div class="text-muted small mb-2">
-                        <i class="fa-solid fa-location-dot me-2"></i>
-                        @item.Location
-                    </div>
-
-                    <!-- Bottom Row -->
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="text-muted small">
-                            <i class="fa-solid fa-users me-2"></i>
-                            @item.Attendees attendees
+                            <span class="badge @(item.IsActive ? "bg-success" : "bg-secondary")">
+                                @(item.IsActive ? "Active" : "Inactive")
+                            </span>
                         </div>
 
-                        <div class="fw-bold">
-                            @item.Price
+                        <!-- Title -->
+                        <h6 class="fw-bold">@item.Name</h6>
+                        <!--Video-->
+                        <video class="card-img-top"
+                               style="height:200px; object-fit:cover"
+                               controls>
+                            <source src="@item.VideoUrl" type="video/mp4" />
+                            Your browser does not support the video tag.
+                        </video>
+                        <!-- Description -->
+                        <div class="text-muted small mb-2">
+                            @item.Description
                         </div>
-                    </div>
 
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+
+                            <!-- Left content -->
+                            <div>
+                                <!-- Instructor -->
+                                <div class="text-muted small mb-1">
+                                    <i class="fa-solid fa-user me-2"></i>
+                                    @item.InstructorName
+                                </div>
+
+                                <!-- CPD Points -->
+                                <div class="text-muted small">
+                                    <i class="fa-solid fa-book me-2"></i>
+                                    @item.CpdPoints CPD Points
+                                </div>
+                            </div>
+
+                            <!-- Right icons -->
+                            <div class="d-flex gap-3">
+                                <i class="fa-solid fa-pen text-primary cursor-pointer"
+                                   title="Edit"
+                                   @* @onclick="() => EditCourse(item.Id)" *@
+                                    >
+                                </i>
+
+                                <i class="fa-solid fa-trash text-danger cursor-pointer"
+                                   title="Delete"
+                                   @onclick="() => DeleteCourse(item)"
+                                   >
+                                </i>
+                            </div>
+
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="mt-auto pt-2">
+                            <button class="btn btn-sm btn-outline-primary w-100">
+                                View Details
+                            </button>
+                        </div>
+
+                    </div>
                 </div>
+            }
+        </div>
+    }
+</div>
+
+@* CME Modal *@
+<div class="modal fade" id="waferModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <!-- HEADER -->
+            <div class="modal-header">
+                <h5 class="modal-title">Create Poster Wafer</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
             </div>
-        }
+
+            <!-- BODY -->
+            <div class="modal-body">
+                <EditForm Model="newCMEItem" OnValidSubmit="SaveCMEItem">
+                    <DataAnnotationsValidator />
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label>Speciality</label>
+
+                            <select class="form-select" @bind="newCMEItem.Specialty">
+                                @foreach (var cat in Enum.GetValues<Specialty>())
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
+                            </select>
+                        </div>
+
+                        @* <div class="col-md-6">
+                            <label>Company</label>
+                            <input class="form-control" @bind="newCMEItem.CompanyId" />
+                        </div> *@
+
+                        <div class="mb-6">
+                            <label>Title</label>
+                            <input class="form-control" @bind="newCMEItem.Name" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Description</label>
+                            <textarea class="form-control" rows="4" @bind="newCMEItem.Description">
+                            </textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Upload Video</label>
+                            <InputFile OnChange="HandleFileSelected" accept="video/*" />
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(videoPreviewUrl))
+                        {
+                            <video width="100%" height="200" controls>
+                                <source src="@videoPreviewUrl" type="video/mp4" />
+                                Your browser does not support video.
+                            </video>
+                        }
+
+                        <div class="col-md-6">
+                            <label>Instructor's Name</label>
+                            <input class="form-control" @bind="newCMEItem.InstructorName" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label>CPD Points</label>
+                            <input type="number" class="form-control" @bind="newCMEItem.CpdPoints" />
+                        </div>
+
+                      @*   <div class="col-md-6">
+                            <label>Inactivation Date</label>
+                            <input type="datetime-local" class="form-control" @bind="newCMEItem.WaferLastDateOfInActivation" />
+                        </div> *@
+
+                  
+
+                        <div class="col-md-12 form-check">
+                            <input type="checkbox" class="form-check-input" @bind="newCMEItem.IsActive" />
+                            <label class="form-check-label">
+                                Is Active
+                            </label>
+                        </div>
+                    </div>
+
+
+                    <hr />
+
+                    <button class="btn btn-success w-100"
+                            type="submit"
+                            disabled="@string.IsNullOrEmpty(returnedBlobName)">
+                        Save
+                    </button>
+
+                </EditForm>
+            </div>
+        </div>
     </div>
 </div>
 
+
 @code {
 
-    //page protection
-    protected override void OnInitialized()
+    private List<CMEItem> cMEItems = new();
+    private Specialty SelectedSpecialty = Specialty.GeneralSurgery;
+
+    const string Container = "sskdevtests";
+    // const string Container = "cme-videos";
+
+    IBrowserFile selectedFile;
+    string? videoPreviewUrl;
+    string? returnedBlobName;
+
+    private bool isLoading = false;
+
+
+
+    protected override async Task OnInitializedAsync()
     {
         if (!AuthState.IsLoggedIn)
         {
             Navigation.NavigateTo("/", true);
+            return;
         }
-    }
-    public class EventItem
-    {
-        public string Type { get; set; }
-        public string Status { get; set; }
-        public string Title { get; set; }
-        public string Date { get; set; }
-        public string Location { get; set; }
-        public int Attendees { get; set; }
-        public string Price { get; set; }
+
+        await LoadCourses();
     }
 
-    List<EventItem> EventList = new()
+    /// <summary>
+    /// load for cmes with speciality
+    /// </summary>
+    private async Task LoadCourses()
     {
-        new() {
-            Type="Workshop",
-            Status="Upcoming",
-            Title="SSK Conference Laparoscopic Workshop",
-            Date="22–24 April 2026",
-            Location="Mombasa Pride Inn Hotel",
-            Attendees=85,
-            Price="KES 2,536"
-        },
-  
-        new() {
-            Type="Workshop",
-            Status="Completed",
-            Title="Pre-Conference Breast Preceptorship",
-            Date="1 April 2024",
-            Location="Aga Khan University Hospital",
-            Attendees=45,
-            Price="KES 3,000"
-        },
-        new() {
-            Type="Course",
-            Status="Upcoming",
-            Title="PAACS Surgical Training Course",
-            Date="15–17 June 2026",
-            Location="Kenyatta National Hospital",
-            Attendees=30,
-            Price="KES 4,500"
-        },
-        new() {
-            Type="CME",
-            Status="Upcoming",
-            Title="Trauma Surgery CME Program",
-            Date="10 May 2026",
-            Location="Moi Teaching & Referral Hospital",
-            Attendees=60,
-            Price="Free"
-        },
-        new() {
-            Type="Workshop",
-            Status="Upcoming",
-            Title="Minimally Invasive Surgery Workshop",
-            Date="8–9 July 2026",
-            Location="Nairobi Hospital",
-            Attendees=0,
-            Price="KES 3,200"
-        }
-    };
-
-    string GetStatusBadge(string status) =>
-        status == "Upcoming"
-            ? "badge badge-upcoming"
-            : "badge badge-completed";
-
-    string GetTypeBadge(string type) =>
-        type switch
+        try
         {
-            "Workshop" => "badge badge-workshop",
-            "Conference" => "badge badge-conference",
-            "Course" => "badge badge-course",
-            "CME" => "badge badge-cme",
-            _ => "badge bg-secondary"
+            isLoading = true;
+            cMEItems.Clear();
+
+            var url = $"api/cme/by-specialty?specialty={SelectedSpecialty}&isActive=True";
+
+            var stream = await Http.GetStreamAsync(url);
+
+
+            var response = await JsonSerializer.DeserializeAsync<ApiResponse<List<CMEItem>>>(
+                stream,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter() }
+                });
+
+            if (response?.IsSuccess == true)
+            {
+                cMEItems = response.Data;
+
+                foreach (var item in cMEItems)
+                {
+                    item.VideoUrl = await VideoUrl(item);
+                }
+            }
+            else
+            {
+                cMEItems = new List<CMEItem>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // =========================
+    // Speciality change
+    // =========================
+    private async Task OnSpecialtyChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<Specialty>(e.Value?.ToString(), out var selected))
+        {
+            SelectedSpecialty = selected;
+            await LoadCourses();
+        }
+    }
+
+    //============================
+    //get video url
+    //============================
+
+    async Task<string> VideoUrl(CMEItem cMEItem)
+    {
+        if (string.IsNullOrEmpty(cMEItem.BlobName))
+            return null;
+
+        try
+        {
+            var response = await Http.GetAsync(
+            $"api/GetPDFByBlobName?containerName={cMEItem.ContainerName}&blobName={cMEItem.BlobName}"
+            );
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var result = await response.Content.ReadFromJsonAsync<SasResponse>();
+
+            return result?.Data; // this should be your SAS URL
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+
+
+    //=========================================
+    // Handle video selection
+    //=========================================
+
+    async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        // Validate video
+        if (!file.ContentType.StartsWith("video/"))
+        {
+            Console.WriteLine("Only video files allowed");
+            return;
+        }
+
+        try
+        {
+            var content = new MultipartFormDataContent();
+
+            var stream = file.OpenReadStream(50 * 1024 * 1024); // videos need larger limit
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+
+            var blobName = file.Name;
+
+            // ✅ changed from "image"
+            content.Add(fileContent, "video", blobName);
+
+            var uploadUrl =
+                $"api/UploadVideo?blobName={Uri.EscapeDataString(blobName)}&containerName={Container}";
+
+            var response = await Http.PostAsync(uploadUrl, content);
+
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<UploadBlobResponseDTO>();
+
+            returnedBlobName = result?.BlobName;
+            newCMEItem.BlobName = returnedBlobName;
+
+            // ✅ Video preview (NOT base64)
+            videoPreviewUrl = await JS.InvokeAsync<string>("URL.createObjectURL", file);
+
+            var raw = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"UPLOAD RESPONSE: {raw}");
+
+            Console.WriteLine($"✅ Uploaded video: {returnedBlobName}");
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"upload error: {ex.Message}");
+        }
+    }
+
+
+    // new CMEItem
+    private CMEItem newCMEItem = new()
+        {
+            ContainerName = "sskdevtests",
+            IsActive = true,
+            Specialty = Specialty.GeneralSurgery //DEFAULT
         };
+
+    //======================================
+    // Posting as saving CME education
+    //=======================================
+
+    private async Task SaveCMEItem()
+    {
+       
+        var payload = new
+        {
+            id = "",
+            specialty = newCMEItem.Specialty.ToString(),
+            name = newCMEItem.Name,
+            description = newCMEItem.Description,
+            instructorName = newCMEItem.InstructorName,
+            cpdPoints = newCMEItem.CpdPoints,
+            blobName = returnedBlobName,
+            ContainerName = "sskdevtests",
+            isActive = newCMEItem.IsActive
+        };
+
+        if (string.IsNullOrEmpty(returnedBlobName))
+        {
+            Console.WriteLine("❌ Upload not completed or failed");
+            return;
+        }
+
+        var response = await Http.PostAsJsonAsync(
+            "api/cme/create",
+            payload);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await LoadCourses();
+
+            // reset everything
+            newCMEItem = new CMEItem
+            {
+                ContainerName = "sskdevtests",
+                IsActive = true,
+                Specialty = Specialty.GeneralSurgery
+            };
+
+            videoPreviewUrl = null;
+            returnedBlobName = null;
+
+            //log
+            Console.WriteLine($"Saving blobName: {returnedBlobName}");
+
+            await JS.InvokeVoidAsync("closeModal", "waferModal");
+        }
+
+    }
+
+
+    /// <summary>
+    /// Delete CMEItem
+    /// </summary>
+
+    private async Task DeleteCourse(CMEItem cMEItem)
+    {
+        try
+        {
+            // "api/cme/delete?id=NeuroSurgery_47e9ae&specialty=NeuroSurgery"
+            var url = $"api/cme/delete?id={cMEItem.Id}&specialty={cMEItem.Specialty}";
+
+            var request = new HttpRequestMessage(HttpMethod.Delete, url);
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Deleted successfully");
+
+                // Refresh list
+                await LoadCourses();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Delete failed: {error}");
+            }
+
+        }catch(Exception ex)
+        {
+            Console.WriteLine($"Error deleting wafer: {ex.Message}");
+
+        }
+    }
+
+    public enum Specialty
+    {
+        GeneralSurgery,
+        Urology,
+        BreastSurgery,
+        GastroIntestinalSurgery,
+        OrthopedicSurgery,
+        NeuroSurgery,
+        PlasticSurgery
+    }
+
+    public class ApiResponse<T>
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public T Data { get; set; }
+    }
+
+    public class CMEItem
+    {
+        public string Id { get; set; }
+        public Specialty Specialty { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string InstructorName { get; set; }
+        public int CpdPoints { get; set; }
+        public string BlobName { get; set; }
+        public string ContainerName { get; set; }
+        public bool IsActive { get; set; }
+        public string VideoUrl { get; set; }
+
+    }
+
+    public class SasResponse
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public string Data { get; set; }
+    }
+
+    public class UploadBlobResponseDTO
+    {
+        public string Message { get; set; }
+        public string ContainerName { get; set; }
+        public string BlobName { get; set; }
+    }
 }
