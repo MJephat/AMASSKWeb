@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
+@using System.Net;
 
 
 <div class="container-fluid py-4">
@@ -104,8 +105,7 @@
                             <div class="d-flex gap-3">
                                 <i class="fa-solid fa-pen text-primary cursor-pointer"
                                    title="Edit"
-                                   @* @onclick="() => EditCourse(item.Id)" *@
-                                    >
+                                   @onclick="() => EditCourse(item)">
                                 </i>
 
                                 <i class="fa-solid fa-trash text-danger cursor-pointer"
@@ -138,8 +138,9 @@
 
             <!-- HEADER -->
             <div class="modal-header">
-                <h5 class="modal-title">Create Poster Wafer</h5>
-                <button type="button"
+                <h5 class="modal-title">
+                    @(isEditMode ? "Edit Course" : "Create Course")
+                </h5>                <button type="button"
                         class="btn-close"
                         data-bs-dismiss="modal">
                 </button>
@@ -191,6 +192,19 @@
                                 Your browser does not support video.
                             </video>
                         }
+                        @if (isUploading)
+                        {
+                            <div class="mt-2">
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar"
+                                         style="width: @uploadProgress%">
+                                        @uploadProgress%
+                                    </div>
+                                </div>
+                                <small class="text-muted">Uploading video...</small>
+                            </div>
+                        }
 
                         <div class="col-md-6">
                             <label>Instructor's Name</label>
@@ -223,7 +237,7 @@
                     <button class="btn btn-success w-100"
                             type="submit"
                             disabled="@string.IsNullOrEmpty(returnedBlobName)">
-                        Save
+                        @(isEditMode ? "Update Course" : "Save")
                     </button>
 
                 </EditForm>
@@ -247,7 +261,12 @@
 
     private bool isLoading = false;
 
+    bool isEditMode = false;
+    string? editingId = null;
 
+    bool isVideoReplaced = false;
+    int uploadProgress = 0;
+    bool isUploading = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -359,7 +378,6 @@
         var file = e.File;
         if (file == null) return;
 
-        // Validate video
         if (!file.ContentType.StartsWith("video/"))
         {
             Console.WriteLine("Only video files allowed");
@@ -368,20 +386,25 @@
 
         try
         {
-            var content = new MultipartFormDataContent();
+            isUploading = true;
+            uploadProgress = 0;
 
-            var stream = file.OpenReadStream(50 * 1024 * 1024); // videos need larger limit
-            var fileContent = new StreamContent(stream);
-            fileContent.Headers.ContentType =
+            var stream = file.OpenReadStream(50 * 1024 * 1024);
+
+            var progressContent = new ProgressableStreamContent(stream, (sent, total) =>
+            {
+                uploadProgress = (int)((sent * 100L) / total);
+                InvokeAsync(StateHasChanged);
+            });
+
+            progressContent.Headers.ContentType =
                 new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
 
-            var blobName = file.Name;
-
-            // ✅ changed from "image"
-            content.Add(fileContent, "video", blobName);
+            var content = new MultipartFormDataContent();
+            content.Add(progressContent, "video", file.Name);
 
             var uploadUrl =
-                $"api/UploadVideo?blobName={Uri.EscapeDataString(blobName)}&containerName={Container}";
+                $"api/UploadVideo?blobName={Uri.EscapeDataString(file.Name)}&containerName={Container}";
 
             var response = await Http.PostAsync(uploadUrl, content);
 
@@ -392,17 +415,17 @@
             returnedBlobName = result?.BlobName;
             newCMEItem.BlobName = returnedBlobName;
 
-            // ✅ Video preview (NOT base64)
             videoPreviewUrl = await JS.InvokeAsync<string>("URL.createObjectURL", file);
 
-            var raw = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"UPLOAD RESPONSE: {raw}");
-
-            Console.WriteLine($"✅ Uploaded video: {returnedBlobName}");
+            Console.WriteLine($"✅ Upload complete: {returnedBlobName}");
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine($"upload error: {ex.Message}");
+        }
+        finally
+        {
+            isUploading = false;
         }
     }
 
@@ -421,53 +444,105 @@
 
     private async Task SaveCMEItem()
     {
-       
+
+        string finalBlobName;
+
+        if (isEditMode)
+        {
+            // If user replaced video → use new one, Otherwise → keep old one
+            finalBlobName = isVideoReplaced ? returnedBlobName: newCMEItem.BlobName;
+        }
+        else
+        {
+            // Create requires upload
+            if (string.IsNullOrEmpty(returnedBlobName))
+            {
+                Console.WriteLine("❌ Upload required");
+                return;
+            }
+
+            finalBlobName = returnedBlobName;
+        }
+      
+
         var payload = new
         {
-            id = "",
+            id = isEditMode ? editingId : "",
             specialty = newCMEItem.Specialty.ToString(),
             name = newCMEItem.Name,
             description = newCMEItem.Description,
             instructorName = newCMEItem.InstructorName,
             cpdPoints = newCMEItem.CpdPoints,
             blobName = returnedBlobName,
-            ContainerName = "sskdevtests",
+            containerName = "sskdevtests",
             isActive = newCMEItem.IsActive
         };
 
-        if (string.IsNullOrEmpty(returnedBlobName))
-        {
-            Console.WriteLine("❌ Upload not completed or failed");
-            return;
-        }
+        HttpResponseMessage response;
 
-        var response = await Http.PostAsJsonAsync(
-            "api/cme/create",
-            payload);
+        if (isEditMode)
+        {
+            response = await Http.PutAsJsonAsync("api/cme/update", payload);
+        }
+        else
+        {
+            response = await Http.PostAsJsonAsync("api/cme/create", payload);
+        }
 
         if (response.IsSuccessStatusCode)
         {
             await LoadCourses();
 
-            // reset everything
-            newCMEItem = new CMEItem
-            {
-                ContainerName = "sskdevtests",
-                IsActive = true,
-                Specialty = Specialty.GeneralSurgery
-            };
-
-            videoPreviewUrl = null;
-            returnedBlobName = null;
-
-            //log
-            Console.WriteLine($"Saving blobName: {returnedBlobName}");
+            ResetForm();
 
             await JS.InvokeVoidAsync("closeModal", "waferModal");
         }
-
     }
 
+    //======================================
+    // Edit CMEItem
+    //======================================
+
+    void EditCourse(CMEItem item)
+    {
+        isEditMode = true;
+        editingId = item.Id;
+
+        newCMEItem = new CMEItem
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Description = item.Description,
+            InstructorName = item.InstructorName,
+            CpdPoints = item.CpdPoints,
+            Specialty = item.Specialty,
+            IsActive = item.IsActive,
+            ContainerName = item.ContainerName,
+            BlobName = item.BlobName
+        };
+
+        returnedBlobName = item.BlobName;
+        videoPreviewUrl = item.VideoUrl;
+
+        JS.InvokeVoidAsync("openModal", "waferModal");
+    }
+
+    private void ResetForm()
+    {
+        isEditMode = false;
+        editingId = null;
+        isVideoReplaced = false;
+
+        newCMEItem = new CMEItem
+        {
+            ContainerName = "sskdevtests",
+            IsActive = true,
+            Specialty = Specialty.GeneralSurgery
+        };
+
+        videoPreviewUrl = null;
+        returnedBlobName = null;
+    }
 
     /// <summary>
     /// Delete CMEItem
@@ -503,6 +578,58 @@
 
         }
     }
+
+    //====================================
+    // progressive bar
+    //====================================
+    public class ProgressableStreamContent : HttpContent
+    {
+        private const int defaultBufferSize = 81920;
+        private readonly Stream content;
+        private readonly int bufferSize;
+        private readonly Action<long, long>? progress;
+
+        public ProgressableStreamContent(Stream content, Action<long, long>? progress, int bufferSize = defaultBufferSize)
+        {
+            this.content = content;
+            this.bufferSize = bufferSize;
+            this.progress = progress;
+        }
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            var buffer = new byte[bufferSize];
+
+            long size = content.CanSeek ? content.Length : -1;
+            long uploaded = 0;
+
+            int read;
+            while ((read = await content.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                uploaded += read;
+
+                if (size > 0)
+                {
+                    progress?.Invoke(uploaded, size);
+                }
+
+                await stream.WriteAsync(buffer, 0, read);
+            }
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            if (content.CanSeek)
+            {
+                length = content.Length;
+                return true;
+            }
+
+            length = -1;
+            return false;
+        }
+    }
+
 
     public enum Specialty
     {
