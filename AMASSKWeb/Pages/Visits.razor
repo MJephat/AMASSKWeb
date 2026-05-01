@@ -1,0 +1,147 @@
+﻿@page "/visits"
+@inject HttpClient Http
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+
+<div class="container py-4">
+
+    <h4 class="fw-bold mb-3">Booth Visits</h4>
+
+    <!-- Filters -->
+    <div class="row g-3 mb-4">
+
+        <!-- Sponsor -->
+        <div class="col-md-4">
+            <label class="form-label">Sponsor</label>
+            <input class="form-control"
+                   placeholder="e.g. britam"
+                   @bind="SponsorId" />
+        </div>
+
+        <!-- Event -->
+        <div class="col-md-4">
+            <label class="form-label">Event</label>
+            <input class="form-control"
+                   placeholder="e.g. ssk-annual-congress-2026"
+                   @bind="EventId" />
+        </div>
+
+        <!-- Button -->
+        @* <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-primary w-100" @onclick="LoadVisits">
+                Fetch Visits
+            </button>
+        </div> *@
+    </div>
+
+    <!-- Loading -->
+    @if (IsLoading)
+    {
+        <p>Loading visits...</p>
+    }
+    else if (VisitList == null || !VisitList.Any())
+    {
+        <p class="text-muted">No visits found.</p>
+    }
+    else
+    {
+        <!-- Table -->
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Sponsor</th>
+                    <th>Event</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var v in VisitList)
+                {
+                    <tr>
+                        <td>@v.VisitorName</td>
+                        <td>@v.VisitorEmail</td>
+                        <td>@v.SponsorUniqueId</td>
+                        <td>@v.UniqueEventIdentifier</td>
+                        <td>@v.VisitDateTime.ToLocalTime()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+</div>
+
+@code {
+
+    private string SponsorId = "britam";
+    private string EventId = "ssk-annual-congress-2026";
+
+    private bool IsLoading = false;
+    private List<BoothVisit> VisitList = new();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/", true);
+            return;
+        }
+
+        await LoadVisits();
+    }
+
+
+    private async Task LoadVisits()
+    {
+        if (string.IsNullOrWhiteSpace(SponsorId) || string.IsNullOrWhiteSpace(EventId))
+            return;
+
+        try
+        {
+            IsLoading = true;
+
+            var url = $"api/boothvisits/{SponsorId}/event?eventId={EventId}";
+
+            var response = await Http.GetFromJsonAsync<ApiResponse<List<BoothVisit>>>(url);
+
+            if (response != null && response.IsSuccess)
+            {
+                VisitList = response.Data ?? new();
+            }
+            else
+            {
+                VisitList = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            VisitList = new();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    // Models
+    public class ApiResponse<T>
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; }
+        public T Data { get; set; }
+    }
+
+    public class BoothVisit
+    {
+        public string Id { get; set; }
+        public string UniqueEventIdentifier { get; set; }
+        public string SponsorUniqueId { get; set; }
+        public string VisitorName { get; set; }
+        public string VisitorEmail { get; set; }
+        public DateTime VisitDateTime { get; set; }
+    }
+}
