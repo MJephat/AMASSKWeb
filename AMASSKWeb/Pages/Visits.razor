@@ -27,11 +27,11 @@
         </div>
 
         <!-- Button -->
-        @* <div class="col-md-4 d-flex align-items-end">
+        <div class="col-md-4 d-flex align-items-end">
             <button class="btn btn-primary w-100" @onclick="LoadVisits">
                 Fetch Visits
             </button>
-        </div> *@
+        </div>
     </div>
 
     <!-- Loading -->
@@ -75,7 +75,7 @@
 
 @code {
 
-    private string SponsorId = "britam";
+    private string SponsorId = "cosmos-ltd";
     private string EventId = "ssk-annual-congress-2026";
 
     private bool IsLoading = false;
@@ -103,7 +103,7 @@
         {
             IsLoading = true;
 
-            var url = $"api/boothvisits/{SponsorId}/event?eventId={EventId}";
+            var url = $"https://bdn-ssk-events-api-e2gbegeqdfh6aedw.southafricanorth-01.azurewebsites.net/api/boothvisits/{SponsorId}/event?eventId={EventId}";
 
             var response = await Http.GetFromJsonAsync<ApiResponse<List<BoothVisit>>>(url);
 
