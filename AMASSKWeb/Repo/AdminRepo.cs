@@ -30,7 +30,7 @@ namespace AMASSKWeb.Repo
 
             var rawResponse = await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine($"API RESPONSE: {rawResponse}");
+            //Console.WriteLine($"API RESPONSE: {rawResponse}");
 
             if (string.IsNullOrWhiteSpace(rawResponse))
             {
